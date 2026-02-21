@@ -1,20 +1,52 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getContestData } from '@/lib/dfs-api';
 import { initialContestData } from '@/lib/mock-data';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Logo } from '@/components/logo';
 import { Users } from 'lucide-react';
+import type { Player } from '@/lib/types';
 
 export default function LoginPage() {
   const router = useRouter();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [players, setPlayers] = useState<Player[]>(initialContestData.players);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   const loginImage = PlaceHolderImages.find(img => img.id === 'golf-course');
+
+  useEffect(() => {
+    let mounted = true;
+    const loadPlayers = async () => {
+      setLoadingPlayers(true);
+      setLoadingError(null);
+      try {
+        const data = await getContestData();
+        if (mounted && data.players.length) {
+          setPlayers(data.players);
+        }
+      } catch (error) {
+        if (mounted) {
+          setLoadingError(error instanceof Error ? error.message : 'Could not load contest players');
+        }
+      } finally {
+        if (mounted) {
+          setLoadingPlayers(false);
+        }
+      }
+    };
+
+    void loadPlayers();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogin = () => {
     if (selectedUserId) {
@@ -39,16 +71,17 @@ export default function LoginPage() {
           <Logo className="h-16 w-16 text-primary" />
           <CardTitle className="text-3xl font-headline">PGA Contest Tracker</CardTitle>
           <CardDescription>Select your name to view the live leaderboard.</CardDescription>
+          {loadingError && <p className="text-xs text-destructive">{loadingError}</p>}
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex flex-col space-y-1.5">
               <Select onValueChange={setSelectedUserId}>
                 <SelectTrigger id="user-select" className="w-full">
-                  <SelectValue placeholder="Select a user..." />
+                  <SelectValue placeholder={loadingPlayers ? 'Loading users...' : 'Select a user...'} />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {initialContestData.players.map((player) => (
+                  {players.map((player) => (
                     <SelectItem key={player.id} value={String(player.id)}>
                       {player.name}
                     </SelectItem>
@@ -59,7 +92,7 @@ export default function LoginPage() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleLogin} disabled={!selectedUserId} className="w-full">
+          <Button onClick={handleLogin} disabled={!selectedUserId || loadingPlayers} className="w-full">
             <Users className="mr-2 h-4 w-4" /> View Leaderboard
           </Button>
         </CardFooter>

@@ -1,23 +1,30 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { initialContestData, refreshContestData } from '@/lib/mock-data';
-import type { ContestData, LeaderboardPlayer, Player } from '@/lib/types';
+import { initialContestData } from '@/lib/mock-data';
+import {
+  getContestData,
+  getContestStreamUrl,
+  getDfsApiConfig,
+  normalizeContestPayload,
+} from '@/lib/dfs-api';
+import type { ContestData, LeaderboardPlayer } from '@/lib/types';
 import Leaderboard from '@/components/dashboard/leaderboard';
 import DashboardHeader from '@/components/dashboard/header';
 import ContestHeader from '@/components/dashboard/contest-header';
 import LineupCard from '@/components/dashboard/lineup-card';
-
-function calculateUserScore(player: Player): number {
-  return player.lineup.reduce((total, golfer) => total + golfer.total, 0);
-}
 
 function DashboardContent() {
   const searchParams = useSearchParams();
   const [contestData, setContestData] = useState<ContestData>(initialContestData);
   const [selectedPlayer, setSelectedPlayer] = useState<LeaderboardPlayer | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isStreamConnected, setIsStreamConnected] = useState(false);
+  const [streamAttempt, setStreamAttempt] = useState(0);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const refreshIntervalMs = getDfsApiConfig().refreshIntervalMs;
 
   const currentUserId = searchParams.get('userId');
   
@@ -52,12 +59,88 @@ function DashboardContent() {
     }
   }, [leaderboardData, currentUser, selectedPlayer]);
 
-  const handleRefresh = () => {
+  useEffect(() => {
+    if (!selectedPlayer) return;
+    const updatedSelected = leaderboardData.find((player) => player.id === selectedPlayer.id);
+    if (updatedSelected) {
+      setSelectedPlayer(updatedSelected);
+    }
+  }, [leaderboardData, selectedPlayer]);
+
+  const syncContestData = useCallback(async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setContestData(prevData => refreshContestData(prevData));
+    setRefreshError(null);
+    try {
+      const data = await getContestData();
+      setContestData(data);
+      setLastUpdatedAt(new Date());
+    } catch (error) {
+      setRefreshError(error instanceof Error ? error.message : 'Refresh failed');
+    } finally {
       setIsRefreshing(false);
-    }, 500); // Simulate network latency
+    }
+  }, []);
+
+  useEffect(() => {
+    void syncContestData();
+  }, [syncContestData]);
+
+  useEffect(() => {
+    if (isStreamConnected) return;
+    const timerId = window.setInterval(() => {
+      void syncContestData();
+    }, refreshIntervalMs);
+
+    return () => window.clearInterval(timerId);
+  }, [isStreamConnected, refreshIntervalMs, syncContestData]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('EventSource' in window)) return;
+    const streamUrl = getContestStreamUrl();
+    if (!streamUrl) return;
+
+    const stream = new EventSource(streamUrl);
+    let retryTimerId: number | undefined;
+
+    stream.onopen = () => {
+      setIsStreamConnected(true);
+      setRefreshError(null);
+    };
+
+    stream.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as unknown;
+        const wrappedPayload =
+          payload && typeof payload === 'object' && !Array.isArray(payload)
+            ? (payload as Record<string, unknown>)
+            : null;
+        const normalized = normalizeContestPayload(wrappedPayload?.contestData ?? payload);
+        setContestData(normalized);
+        setLastUpdatedAt(new Date());
+      } catch (error) {
+        setRefreshError(error instanceof Error ? error.message : 'Invalid stream payload');
+      }
+    };
+
+    stream.onerror = () => {
+      setIsStreamConnected(false);
+      stream.close();
+      retryTimerId = window.setTimeout(() => {
+        setStreamAttempt((current) => current + 1);
+      }, 5_000);
+    };
+
+    return () => {
+      setIsStreamConnected(false);
+      stream.close();
+      if (retryTimerId) {
+        window.clearTimeout(retryTimerId);
+      }
+    };
+  }, [streamAttempt]);
+
+  const handleRefresh = () => {
+    void syncContestData();
   };
 
   const handleSelectPlayer = (player: LeaderboardPlayer) => {
@@ -70,6 +153,9 @@ function DashboardContent() {
         currentUser={currentUser} 
         onRefresh={handleRefresh} 
         isRefreshing={isRefreshing} 
+        lastUpdatedAt={lastUpdatedAt}
+        refreshError={refreshError}
+        isStreamConnected={isStreamConnected}
       />
       <ContestHeader />
       <main className="flex-1 lg:grid lg:grid-cols-3">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { LogOut, RefreshCcw, UserCircle } from 'lucide-react';
+import { LogOut, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { LeaderboardPlayer } from '@/lib/types';
@@ -20,9 +20,19 @@ interface DashboardHeaderProps {
   currentUser?: LeaderboardPlayer;
   onRefresh: () => void;
   isRefreshing: boolean;
+  lastUpdatedAt?: Date | null;
+  refreshError?: string | null;
+  isStreamConnected?: boolean;
 }
 
-export default function DashboardHeader({ currentUser, onRefresh, isRefreshing }: DashboardHeaderProps) {
+export default function DashboardHeader({
+  currentUser,
+  onRefresh,
+  isRefreshing,
+  lastUpdatedAt,
+  refreshError,
+  isStreamConnected,
+}: DashboardHeaderProps) {
   const getInitials = (name: string = '') => {
     return name.split(' ').map(n => n[0]).join('');
   }
@@ -36,6 +46,19 @@ export default function DashboardHeader({ currentUser, onRefresh, isRefreshing }
         </span>
       </Link>
       <div className="flex items-center gap-4">
+        <div className="hidden md:block text-right text-xs text-muted-foreground">
+          {refreshError ? (
+            <p className="text-destructive">{refreshError}</p>
+          ) : isStreamConnected ? (
+            <p className="text-green-600">Live stream connected</p>
+          ) : (
+            <p>
+              {lastUpdatedAt
+                ? `Updated ${lastUpdatedAt.toLocaleTimeString()}`
+                : 'Waiting for first data sync'}
+            </p>
+          )}
+        </div>
         <Button
           variant="outline"
           size="sm"
