@@ -33,7 +33,7 @@ const GOLFERS: Golfer[] = [
   { id: 30, name: "Cameron Young", total: 4, thru: "CUT", position: "CUT", fantasyPoints: 0, ownership: 9.1, imageUrl: "https://pga-tour-res.cloudinary.com/image/upload/c_fill,d_headshots_default.png,f_auto,g_face:center,h_240,q_auto,w_240/headshots_57451.png", r1: "76(+4)", r2: "73(+1)", r3: "-" },
 ];
 
-const PLAYERS: Omit<Player, 'lineup'>[] = [
+const PLAYERS: Omit<Player, 'lineup' | 'prize' | 'phr'>[] = [
   { id: 1, name: "Alice" },
   { id: 2, name: "Bob" },
   { id: 3, name: "Charlie" },
@@ -66,6 +66,8 @@ export const initialContestData: ContestData = {
   golfers: GOLFERS,
   players: PLAYERS.map(player => ({
     ...player,
+    prize: 0,
+    phr: Math.random() > 0.5 ? 216 : 180,
     lineup: generateLineup(),
   })),
 };

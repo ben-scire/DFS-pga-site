@@ -5,8 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { initialContestData, refreshContestData } from '@/lib/mock-data';
 import type { ContestData, LeaderboardPlayer, Player } from '@/lib/types';
 import Leaderboard from '@/components/dashboard/leaderboard';
-import LineupCard from '@/components/dashboard/lineup-card';
 import DashboardHeader from '@/components/dashboard/header';
+import ContestHeader from '@/components/dashboard/contest-header';
+import LineupCard from '@/components/dashboard/lineup-card';
 
 function calculateUserScore(player: Player): number {
   return player.lineup.reduce((total, golfer) => total + golfer.total, 0);
@@ -23,16 +24,18 @@ function DashboardContent() {
   const leaderboardData = useMemo(() => {
     const playersWithScores = contestData.players.map(player => ({
       ...player,
-      totalPoints: calculateUserScore(player),
+      totalPoints: player.lineup.reduce((acc, g) => acc + g.fantasyPoints, 0),
     }));
 
-    playersWithScores.sort((a, b) => a.totalPoints - b.totalPoints);
+    playersWithScores.sort((a, b) => b.totalPoints - a.totalPoints);
 
     let rank = 1;
-    return playersWithScores.map((player, index, allPlayers) => {
-      if (index > 0 && player.totalPoints > allPlayers[index - 1].totalPoints) {
+    let lastScore = playersWithScores[0]?.totalPoints;
+    return playersWithScores.map((player, index) => {
+      if (index > 0 && player.totalPoints < lastScore) {
         rank = index + 1;
       }
+      lastScore = player.totalPoints;
       return { ...player, rank };
     });
   }, [contestData]);
@@ -43,10 +46,11 @@ function DashboardContent() {
   );
 
   useEffect(() => {
-    if (currentUser && !selectedPlayer) {
-      setSelectedPlayer(currentUser);
+    if (leaderboardData.length > 0 && !selectedPlayer) {
+      const userToSelect = currentUser || leaderboardData[0];
+      setSelectedPlayer(userToSelect);
     }
-  }, [currentUser, selectedPlayer]);
+  }, [leaderboardData, currentUser, selectedPlayer]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -56,6 +60,10 @@ function DashboardContent() {
     }, 500); // Simulate network latency
   };
 
+  const handleSelectPlayer = (player: LeaderboardPlayer) => {
+    setSelectedPlayer(player);
+  }
+
   return (
     <>
       <DashboardHeader 
@@ -63,19 +71,18 @@ function DashboardContent() {
         onRefresh={handleRefresh} 
         isRefreshing={isRefreshing} 
       />
-      <main className="flex-1 p-4 md:p-6 lg:p-8">
-        <div className="grid gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <Leaderboard 
-              players={leaderboardData} 
-              onSelectPlayer={setSelectedPlayer}
-              selectedPlayerId={selectedPlayer?.id}
-              currentUserId={currentUser?.id}
-            />
-          </div>
-          <div className="lg:col-span-1">
-            {selectedPlayer && <LineupCard player={selectedPlayer} />}
-          </div>
+      <ContestHeader />
+      <main className="flex-1 lg:grid lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <Leaderboard 
+            players={leaderboardData} 
+            onSelectPlayer={handleSelectPlayer}
+            selectedPlayerId={selectedPlayer?.id}
+            currentUserId={currentUser?.id}
+          />
+        </div>
+         <div className="hidden lg:block lg:col-span-1">
+          {selectedPlayer && <LineupCard player={selectedPlayer} />}
         </div>
       </main>
     </>

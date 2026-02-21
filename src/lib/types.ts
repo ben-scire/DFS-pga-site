@@ -16,6 +16,8 @@ export interface Player {
   id: number;
   name: string;
   lineup: Golfer[];
+  prize: number;
+  phr: number;
 }
 
 export interface ContestData {
