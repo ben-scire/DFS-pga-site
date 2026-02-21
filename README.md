@@ -131,6 +131,7 @@ This repo is configured for static export (`output: 'export'`) with automatic ba
 
 - Push to `main` to trigger `.github/workflows/deploy-pages.yml`.
 - Workflow runs `npm run build:pages` and deploys `out/` to Pages.
+- Workflow includes auto-enable for Pages (`enablement: true`) to reduce first-run setup failures.
 
 ## Important Notes
 
