@@ -69,7 +69,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md bg-background/80 backdrop-blur-sm">
         <CardHeader className="items-center text-center">
           <Logo className="h-16 w-16 text-primary" />
-          <CardTitle className="text-3xl font-headline">PGA Contest Tracker</CardTitle>
+          <CardTitle className="text-3xl font-headline">5x5 Global</CardTitle>
           <CardDescription>Select your name to view the live leaderboard.</CardDescription>
           {loadingError && <p className="text-xs text-destructive">{loadingError}</p>}
         </CardHeader>

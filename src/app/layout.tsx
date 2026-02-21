@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'PGA Contest Tracker',
+  title: '5x5 Global',
   description: 'Live tracking for DraftKings DFS custom PGA contests.',
 };
 
