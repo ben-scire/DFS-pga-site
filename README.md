@@ -130,7 +130,7 @@ This repo is configured for static export (`output: 'export'`) with automatic ba
 ### Deploy
 
 - Push to `main` to trigger `.github/workflows/deploy-pages.yml`.
-- Workflow builds the app and deploys `out/` to Pages.
+- Workflow runs `npm run build:pages` and deploys `out/` to Pages.
 
 ## Important Notes
 

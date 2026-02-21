@@ -167,7 +167,7 @@ function DashboardContent() {
             currentUserId={currentUser?.id}
           />
         </div>
-         <div className="hidden lg:block lg:col-span-1">
+         <div className="lg:col-span-1">
           {selectedPlayer && <LineupCard player={selectedPlayer} />}
         </div>
       </main>
