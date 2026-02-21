@@ -3,6 +3,13 @@ export interface Golfer {
   name: string;
   total: number; // Total score to par for the tournament
   thru: string; // e.g., "14", "F" (Finished), "CUT"
+  position: string;
+  fantasyPoints: number;
+  ownership: number;
+  imageUrl: string;
+  r1: string;
+  r2: string;
+  r3: string;
 }
 
 export interface Player {
