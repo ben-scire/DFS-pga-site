@@ -1,11 +1,12 @@
 "use client";
 
-import { Golf, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { LeaderboardPlayer } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { Logo } from '@/components/logo';
 
 interface LineupCardProps {
   player: LeaderboardPlayer;
@@ -26,7 +27,7 @@ export default function LineupCard({ player }: LineupCardProps) {
             <li key={golfer.id}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Golf className="h-5 w-5 text-muted-foreground" />
+                    <Logo className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium">{golfer.name}</span>
                 </div>
                 <div className="flex items-center gap-3">
