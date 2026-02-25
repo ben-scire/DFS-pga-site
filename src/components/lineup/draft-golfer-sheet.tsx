@@ -20,6 +20,10 @@ interface DraftGolferSheetProps {
   rosterSize: number;
   isUnderSalaryCap: boolean;
   onSelectGolfer: (golferId: string) => void;
+  onClearLineup: () => void;
+  onSubmitLineup: () => void;
+  canSubmit: boolean;
+  isLocked: boolean;
 }
 
 export default function DraftGolferSheet({
@@ -33,12 +37,17 @@ export default function DraftGolferSheet({
   rosterSize,
   isUnderSalaryCap,
   onSelectGolfer,
+  onClearLineup,
+  onSubmitLineup,
+  canSubmit,
+  isLocked,
 }: DraftGolferSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full max-w-none border-zinc-700 bg-[#101116] p-0 text-zinc-100 sm:max-w-none"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        className="h-[100dvh] w-full max-w-none border-zinc-700 bg-[#101116] p-0 text-zinc-100 sm:max-w-none"
       >
         <div className="flex h-full flex-col lg:hidden">
           <SheetHeader className="border-b border-zinc-800 px-4 py-4 text-left">
@@ -55,6 +64,10 @@ export default function DraftGolferSheet({
             rosterSize={rosterSize}
             isUnderSalaryCap={isUnderSalaryCap}
             onSelectGolfer={onSelectGolfer}
+            onClearLineup={onClearLineup}
+            onSubmitLineup={onSubmitLineup}
+            canSubmit={canSubmit}
+            isLocked={isLocked}
             compactHeader
           />
         </div>

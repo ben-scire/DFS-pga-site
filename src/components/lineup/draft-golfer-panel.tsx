@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Search, X } from 'lucide-react';
+import { Minus, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,10 @@ interface DraftGolferPanelProps {
   rosterSize: number;
   isUnderSalaryCap: boolean;
   onSelectGolfer: (golferId: string) => void;
+  onClearLineup?: () => void;
+  onSubmitLineup?: () => void;
+  canSubmit?: boolean;
+  isLocked?: boolean;
   className?: string;
   compactHeader?: boolean;
 }
@@ -32,6 +36,10 @@ export default function DraftGolferPanel({
   rosterSize,
   isUnderSalaryCap,
   onSelectGolfer,
+  onClearLineup,
+  onSubmitLineup,
+  canSubmit,
+  isLocked = false,
   className,
   compactHeader = false,
 }: DraftGolferPanelProps) {
@@ -58,6 +66,7 @@ export default function DraftGolferPanel({
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search all players"
+            autoFocus={false}
             className="h-12 rounded-xl border-zinc-700 bg-zinc-800/80 pl-10 text-base text-zinc-100 placeholder:text-zinc-500"
           />
         </div>
@@ -89,14 +98,16 @@ export default function DraftGolferPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-[#16171d] pb-24">
+      <div className={`flex-1 overflow-y-auto bg-[#16171d] ${onSubmitLineup ? 'pb-44' : 'pb-28'}`}>
         {filteredGolfers.map((golfer) => {
           const isSelected = selectedGolferIds.includes(golfer.golferId);
           const salaryBlocked = !isSelected && golfer.salary > salaryRemaining;
           return (
             <div
               key={golfer.golferId}
-              className="flex items-center gap-3 border-b border-zinc-800 bg-[#f0f0f0] px-3 py-3 text-zinc-900"
+              className={`flex items-center gap-3 border-b border-zinc-800 px-3 py-3 text-zinc-900 ${
+                salaryBlocked ? 'bg-[#ececec] opacity-70' : 'bg-[#f0f0f0]'
+              }`}
             >
               <div className="w-6 text-center text-lg font-bold">G</div>
               <div className="h-16 w-16 overflow-hidden rounded bg-zinc-200">
@@ -132,7 +143,7 @@ export default function DraftGolferPanel({
                       : 'h-12 w-12 rounded-full bg-zinc-900 text-white hover:bg-zinc-800'
                   }
                 >
-                  {isSelected ? <X /> : <Plus />}
+                  {isSelected ? <Minus /> : <Plus />}
                 </Button>
                 {salaryBlocked && <p className="mt-1 w-16 text-center text-[10px] font-semibold text-red-600">OVER CAP</p>}
               </div>
@@ -141,7 +152,7 @@ export default function DraftGolferPanel({
         })}
       </div>
 
-      <div className="sticky bottom-0 border-t border-zinc-800 bg-[#1a1a1d] px-4 py-3">
+      <div className="sticky bottom-0 z-20 border-t border-zinc-800 bg-[#1a1a1d] px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-zinc-300">
@@ -170,6 +181,27 @@ export default function DraftGolferPanel({
             </p>
           </div>
         </div>
+        {onSubmitLineup && onClearLineup && (
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-zinc-700 pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onClearLineup}
+              disabled={isLocked}
+              className="h-11 rounded-xl border border-zinc-700 bg-zinc-900/50 text-zinc-100 hover:bg-zinc-800"
+            >
+              Clear
+            </Button>
+            <Button
+              type="button"
+              onClick={onSubmitLineup}
+              disabled={!canSubmit}
+              className="h-11 rounded-xl bg-blue-500 text-white hover:bg-blue-400 disabled:bg-zinc-700 disabled:text-zinc-400"
+            >
+              Submit Lineup
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -204,7 +204,7 @@ function LineupContent() {
               </div>
             </main>
 
-            <div className="sticky bottom-0 mt-auto border-t border-zinc-800 bg-[#1a1a1d]">
+            <div className="sticky bottom-0 z-20 mt-auto border-t border-zinc-800 bg-[#1a1a1d] pb-[env(safe-area-inset-bottom)]">
               <div className="grid grid-cols-2 gap-2 px-4 py-3 text-white">
                 <div>
                   <p className="text-sm text-zinc-300">
@@ -297,6 +297,12 @@ function LineupContent() {
         rosterSize={contest.rosterSize}
         isUnderSalaryCap={validation.isUnderSalaryCap}
         onSelectGolfer={toggleGolfer}
+        onClearLineup={clearLineup}
+        onSubmitLineup={() => {
+          void handleSubmit();
+        }}
+        canSubmit={validation.canSubmit}
+        isLocked={validation.isLocked}
       />
     </div>
   );

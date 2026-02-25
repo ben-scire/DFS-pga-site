@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, X } from 'lucide-react';
+import { ChevronRight, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
 
@@ -67,7 +67,7 @@ export default function LineupSlotRow({
         className="h-11 w-11 rounded-full bg-zinc-300 text-zinc-700 hover:bg-zinc-400"
         aria-label={`Remove golfer from slot ${slotIndex + 1}`}
       >
-        <X />
+        <Minus />
       </Button>
     </div>
   );
