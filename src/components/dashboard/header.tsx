@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 
 interface DashboardHeaderProps {
@@ -72,7 +72,6 @@ export default function DashboardHeader({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
-                <AvatarImage src={`https://i.pravatar.cc/150?u=${currentUser?.id}`} alt={currentUser?.name} />
                 <AvatarFallback>{getInitials(currentUser?.name)}</AvatarFallback>
               </Avatar>
             </Button>
