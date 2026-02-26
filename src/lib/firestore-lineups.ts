@@ -45,16 +45,19 @@ function toPersistedEntry(data: TestLineupDoc): PersistedLineupEntry {
 }
 
 function toDoc(entry: PersistedLineupEntry & { userDisplayName: string }): TestLineupDoc {
-  return {
+  const base: TestLineupDoc = {
     contestId: entry.contestId,
     userSlug: entry.userKey,
     userDisplayName: entry.userDisplayName,
     lineupGolferIds: entry.lineupGolferIds,
-    submittedAtIso: entry.submittedAtIso,
     lastEditedAtIso: entry.lastEditedAtIso,
     source: 'web-test',
     version: 1,
   };
+  if (entry.submittedAtIso) {
+    base.submittedAtIso = entry.submittedAtIso;
+  }
+  return base;
 }
 
 export function isFirestoreLineupStorageAvailable(): boolean {
@@ -138,4 +141,3 @@ export function subscribeToTestLineup(
     }
   );
 }
-

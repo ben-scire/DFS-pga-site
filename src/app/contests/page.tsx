@@ -3,7 +3,7 @@
 import { Suspense } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { CalendarDays, Clock3, Flag, Sparkles, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/l
 import { loadImportedPlayerPool, loadPersistedLineup, savePersistedLineup } from '@/lib/weekly-lineup-storage';
 
 function ContestsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const userId = searchParams.get('userId') ?? 'guest';
   const [savedEntry, setSavedEntry] = useState<PersistedLineupEntry | null>(null);
@@ -23,11 +24,17 @@ function ContestsContent() {
 
   const featuredContest = WEEKLY_CONTESTS[0];
   const featuredContestDef = getWeeklyContestById(featuredContest.id);
-  const userLabel = getTestUserName(userId) ?? 'Guest';
+  const resolvedUserName = getTestUserName(userId);
+  const userLabel = resolvedUserName ?? 'Guest';
+  const isValidTestUser = Boolean(resolvedUserName);
 
   useEffect(() => {
     const contest = getWeeklyContestById(featuredContest.id);
     if (!contest) return;
+    if (contest.testMode && !isValidTestUser) {
+      setSavedEntry(null);
+      return;
+    }
     const importedPool = loadImportedPlayerPool(contest.id);
     setSavedPool(importedPool && importedPool.length ? importedPool : getDefaultPlayerPool(contest.id));
     const localEntry = loadPersistedLineup(contest.id, userId);
@@ -51,7 +58,7 @@ function ContestsContent() {
     return () => {
       cancelled = true;
     };
-  }, [featuredContest.id, userId]);
+  }, [featuredContest.id, isValidTestUser, userId]);
 
   const savedLineupIds = savedEntry?.lineupGolferIds ?? [];
 
@@ -102,6 +109,11 @@ function ContestsContent() {
                 <p className="mt-2 max-w-2xl text-sm text-zinc-400">
                   Build your lineup for the upcoming tournament. One entry per user, editable until lock.
                 </p>
+                {!isValidTestUser && (
+                  <p className="mt-2 text-sm font-medium text-amber-300">
+                    Select an approved test user from the home page before submitting lineups.
+                  </p>
+                )}
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
                 <div className="flex items-center gap-2">
@@ -275,8 +287,12 @@ function ContestsContent() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button asChild className="h-11 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 text-white hover:from-blue-400 hover:to-cyan-300">
-                    <Link href={`/lineup?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}`}>
+                  <Button
+                    asChild
+                    disabled={!isValidTestUser}
+                    className="h-11 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 text-white hover:from-blue-400 hover:to-cyan-300 disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    <Link href={isValidTestUser ? `/lineup?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}` : '/'}>
                       {savedLineupSummary.validation.isLocked
                         ? 'View Lineup'
                         : savedLineupSummary.golfers.length
@@ -287,6 +303,16 @@ function ContestsContent() {
                   <Button asChild variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
                     <Link href="/season">Season Standings</Link>
                   </Button>
+                  {!isValidTestUser && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.push('/')}
+                      className="h-11 rounded-xl border-amber-300/30 bg-amber-300/10 text-amber-200 hover:bg-amber-300/20"
+                    >
+                      Choose User
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

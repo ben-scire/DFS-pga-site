@@ -44,7 +44,9 @@ function LineupContent() {
   const contestId = searchParams.get('contestId') ?? 'week-1-cognizant';
   const userId = searchParams.get('userId') ?? 'guest';
   const contest = getWeeklyContestById(contestId);
-  const userDisplayName = getTestUserName(userId) ?? userId;
+  const resolvedUserDisplayName = getTestUserName(userId);
+  const isValidTestUser = Boolean(resolvedUserDisplayName);
+  const userDisplayName = resolvedUserDisplayName ?? userId;
 
   const [playerPool, setPlayerPool] = useState<PlayerPoolGolfer[]>([]);
   const [lineupGolferIds, setLineupGolferIds] = useState<string[]>([]);
@@ -67,10 +69,10 @@ function LineupContent() {
 
     let cancelled = false;
     void (async () => {
-      const cloudEnabled = isFirestoreLineupStorageAvailable();
+      const cloudEnabled = isFirestoreLineupStorageAvailable() && (!contest.testMode || isValidTestUser);
       if (!cloudEnabled) {
         if (!cancelled) {
-          setCloudSaveStatus('local-only');
+          setCloudSaveStatus(contest.testMode && !isValidTestUser ? 'error' : 'local-only');
           setDidHydratePersistedEntry(true);
         }
         return;
@@ -112,7 +114,7 @@ function LineupContent() {
     return () => {
       cancelled = true;
     };
-  }, [contest, userDisplayName, userId]);
+  }, [contest, isValidTestUser, userDisplayName, userId]);
 
   useEffect(() => {
     if (!contest) return;
@@ -148,8 +150,8 @@ function LineupContent() {
     // Keep local cache as immediate fallback.
     savePersistedLineup(entry);
 
-    if (!isFirestoreLineupStorageAvailable()) {
-      setCloudSaveStatus('local-only');
+    if (!isFirestoreLineupStorageAvailable() || (contest.testMode && !isValidTestUser)) {
+      setCloudSaveStatus(contest.testMode && !isValidTestUser ? 'error' : 'local-only');
       return;
     }
 
@@ -161,7 +163,7 @@ function LineupContent() {
     }, 250);
 
     return () => window.clearTimeout(timerId);
-  }, [contest, didHydratePersistedEntry, lineupGolferIds, submittedAtIso, userDisplayName, userId]);
+  }, [contest, didHydratePersistedEntry, isValidTestUser, lineupGolferIds, submittedAtIso, userDisplayName, userId]);
 
   const toggleGolfer = (golferId: string) => {
     if (!contest || validation?.isLocked) return;
@@ -190,6 +192,14 @@ function LineupContent() {
 
   const handleSubmit = async () => {
     if (!contest) return;
+    if (contest.testMode && !isValidTestUser) {
+      toast({
+        title: 'Select a valid user',
+        description: 'Open the home page and choose one of the 20 test users before submitting.',
+        variant: 'destructive',
+      });
+      return;
+    }
     let response;
     try {
       response = isFirestoreLineupStorageAvailable()
@@ -282,6 +292,11 @@ function LineupContent() {
                 </div>
               </div>
             )}
+            {contest.testMode && !isValidTestUser && (
+              <div className="border-b border-red-300 bg-red-100 px-4 py-2 text-sm text-red-900">
+                Invalid test user (`{userId}`). Use the home page picker to select one of the approved names.
+              </div>
+            )}
 
             {submittedAtIso && (
               <div className="flex items-center gap-2 border-b border-zinc-800 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">
@@ -294,7 +309,10 @@ function LineupContent() {
               {cloudSaveStatus === 'saving' && 'Saving draft to cloud...'}
               {cloudSaveStatus === 'saved' && 'Saved to cloud (shared across browsers/devices).'}
               {cloudSaveStatus === 'local-only' && 'Cloud save not configured. This browser only.'}
-              {cloudSaveStatus === 'error' && 'Cloud save failed. Local browser copy still available.'}
+              {cloudSaveStatus === 'error' &&
+                (contest.testMode && !isValidTestUser
+                  ? 'Cloud save blocked: invalid test user slug. Use the home page picker.'
+                  : 'Cloud save failed. Local browser copy still available.')}
               {cloudSaveStatus === 'checking' && 'Checking cloud save...'}
             </div>
 
