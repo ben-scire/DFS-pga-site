@@ -301,7 +301,15 @@ function ContestsContent() {
                     </Link>
                   </Button>
                   <Button asChild variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                    <Link href="/season">Season Standings</Link>
+                    <Link
+                      href={
+                        isValidTestUser
+                          ? `/live-lineup?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}`
+                          : '/'
+                      }
+                    >
+                      View Live Lineup
+                    </Link>
                   </Button>
                   {!isValidTestUser && (
                     <Button
@@ -364,30 +372,38 @@ function ContestsContent() {
 
               <Card className="rounded-3xl border border-white/10 bg-gradient-to-br from-[#101723] to-[#0a101a] text-zinc-100">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Season Format</CardTitle>
-                  <CardDescription className="text-zinc-400">Championship points across 4 mini-seasons</CardDescription>
+                  <CardTitle className="text-lg">Live Lineup Tracker</CardTitle>
+                  <CardDescription className="text-zinc-400">Read your saved test-week lineup directly from Firestore</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                      <p className="text-xs uppercase tracking-wide text-zinc-500">Top 10</p>
-                      <p className="mt-1 font-semibold text-zinc-100">25-18-15-12...</p>
+                      <p className="text-xs uppercase tracking-wide text-zinc-500">Source</p>
+                      <p className="mt-1 font-semibold text-zinc-100">Cloud Firestore</p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                      <p className="text-xs uppercase tracking-wide text-zinc-500">Majors</p>
-                      <p className="mt-1 font-semibold text-zinc-100">2x bonus points</p>
+                      <p className="text-xs uppercase tracking-wide text-zinc-500">Mode</p>
+                      <p className="mt-1 font-semibold text-zinc-100">Test Week</p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                      <p className="text-xs uppercase tracking-wide text-zinc-500">Resets</p>
-                      <p className="mt-1 font-semibold text-zinc-100">At each major</p>
+                      <p className="text-xs uppercase tracking-wide text-zinc-500">Updates</p>
+                      <p className="mt-1 font-semibold text-zinc-100">Live subscribe</p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                      <p className="text-xs uppercase tracking-wide text-zinc-500">Standings</p>
-                      <p className="mt-1 font-semibold text-zinc-100">Tracked weekly</p>
+                      <p className="text-xs uppercase tracking-wide text-zinc-500">Scoring</p>
+                      <p className="mt-1 font-semibold text-zinc-100">Coming next</p>
                     </div>
                   </div>
                   <Button asChild variant="outline" className="w-full rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                    <Link href="/season">Open Season Standings</Link>
+                    <Link
+                      href={
+                        isValidTestUser
+                          ? `/live-lineup?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}`
+                          : '/'
+                      }
+                    >
+                      Open Live Lineup View
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>
