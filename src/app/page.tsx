@@ -9,15 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Logo } from '@/components/logo';
 import { Users } from 'lucide-react';
-
-const LOGIN_USERS = [
-  { id: '1', name: 'Ben' },
-  { id: '2', name: 'Dylan' },
-  { id: '3', name: 'Sam L' },
-  { id: '4', name: 'Jake' },
-  { id: '5', name: 'Nick' },
-  { id: '6', name: 'Hank' },
-] as const;
+import { TEST_USERS } from '@/lib/test-users';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,7 +48,7 @@ export default function LoginPage() {
                   <SelectValue placeholder="Select a user..." />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {LOGIN_USERS.map((user) => (
+                  {TEST_USERS.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name}
                     </SelectItem>

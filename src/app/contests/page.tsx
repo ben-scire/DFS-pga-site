@@ -8,19 +8,12 @@ import { CalendarDays, Clock3, Flag, Sparkles, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { loadTestLineup } from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PersistedLineupEntry, PlayerPoolGolfer } from '@/lib/lineup-builder-types';
+import { getTestUserName } from '@/lib/test-users';
 import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
-import { loadImportedPlayerPool, loadPersistedLineup } from '@/lib/weekly-lineup-storage';
-
-const USER_NAMES: Record<string, string> = {
-  '1': 'Ben',
-  '2': 'Dylan',
-  '3': 'Sam L',
-  '4': 'Jake',
-  '5': 'Nick',
-  '6': 'Hank',
-};
+import { loadImportedPlayerPool, loadPersistedLineup, savePersistedLineup } from '@/lib/weekly-lineup-storage';
 
 function ContestsContent() {
   const searchParams = useSearchParams();
@@ -30,15 +23,34 @@ function ContestsContent() {
 
   const featuredContest = WEEKLY_CONTESTS[0];
   const featuredContestDef = getWeeklyContestById(featuredContest.id);
-  const userLabel = USER_NAMES[userId] ?? 'Guest';
+  const userLabel = getTestUserName(userId) ?? 'Guest';
 
   useEffect(() => {
     const contest = getWeeklyContestById(featuredContest.id);
     if (!contest) return;
-    const entry = loadPersistedLineup(contest.id, userId);
-    setSavedEntry(entry);
     const importedPool = loadImportedPlayerPool(contest.id);
     setSavedPool(importedPool && importedPool.length ? importedPool : getDefaultPlayerPool(contest.id));
+    const localEntry = loadPersistedLineup(contest.id, userId);
+    setSavedEntry(localEntry);
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cloudEntry = await loadTestLineup(contest.id, userId);
+        if (cancelled || !cloudEntry) return;
+        setSavedEntry(cloudEntry);
+        savePersistedLineup({
+          ...cloudEntry,
+          userKey: userId,
+        });
+      } catch {
+        // local fallback remains in place for this session
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [featuredContest.id, userId]);
 
   const savedLineupIds = savedEntry?.lineupGolferIds ?? [];
@@ -108,7 +120,10 @@ function ContestsContent() {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Event</p>
                 <p className="mt-1 text-base font-semibold text-zinc-100">{featuredContestDef.name}</p>
-                <p className="text-sm text-zinc-400">{featuredContestDef.hostLabel}</p>
+                <p className="text-sm text-zinc-400">
+                  {featuredContestDef.hostLabel}
+                  {featuredContestDef.testMode ? ' · Test mode (lock disabled)' : ''}
+                </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                 <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-zinc-500">
@@ -145,8 +160,8 @@ function ContestsContent() {
                     <CardTitle className="text-2xl tracking-tight">Your Lineup</CardTitle>
                     <CardDescription className="mt-1 text-zinc-400">{featuredContestDef.name}</CardDescription>
                   </div>
-                  <Badge className={savedLineupSummary.validation.isLocked ? 'bg-zinc-700 text-zinc-100' : 'bg-blue-500/20 text-blue-300'}>
-                    {savedLineupSummary.validation.isLocked ? 'LOCKED' : 'EDITABLE'}
+                    <Badge className={featuredContestDef.testMode ? 'bg-amber-500/20 text-amber-300' : (savedLineupSummary.validation.isLocked ? 'bg-zinc-700 text-zinc-100' : 'bg-blue-500/20 text-blue-300')}>
+                    {featuredContestDef.testMode ? 'TEST MODE' : savedLineupSummary.validation.isLocked ? 'LOCKED' : 'EDITABLE'}
                   </Badge>
                 </div>
                 <p className="text-sm text-zinc-400">
@@ -156,6 +171,11 @@ function ContestsContent() {
                       ? 'Draft in progress (not submitted)'
                       : 'No lineup started yet'}
                 </p>
+                {featuredContestDef.testMode && (
+                  <p className="text-xs font-medium text-amber-300">
+                    Test Mode: lineup lock is disabled for this week&apos;s live tracking run.
+                  </p>
+                )}
               </CardHeader>
 
               <CardContent className="space-y-4">
@@ -286,7 +306,9 @@ function ContestsContent() {
                         <CardDescription className="text-zinc-400">Contest settings</CardDescription>
                       </div>
                     </div>
-                    <Badge className="rounded-full bg-emerald-500/20 text-emerald-300">{featuredContestDef.status.toUpperCase()}</Badge>
+                    <Badge className={featuredContestDef.testMode ? 'rounded-full bg-amber-500/20 text-amber-300' : 'rounded-full bg-emerald-500/20 text-emerald-300'}>
+                      {featuredContestDef.testMode ? 'TEST MODE' : featuredContestDef.status.toUpperCase()}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">

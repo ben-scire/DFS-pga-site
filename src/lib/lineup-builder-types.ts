@@ -12,6 +12,8 @@ export interface WeeklyLeagueContest {
   rosterSize: number;
   entryNumberLabel: string;
   isMajor?: boolean;
+  lockDisabled?: boolean;
+  testMode?: boolean;
 }
 
 export interface PlayerPoolGolfer {
@@ -47,6 +49,8 @@ export interface PersistedLineupEntry {
   contestId: string;
   userKey: string;
   lineupGolferIds: string[];
+  userDisplayName?: string;
   submittedAtIso?: string;
   lastEditedAtIso: string;
+  cloudUpdatedAtIso?: string;
 }

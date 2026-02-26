@@ -11,9 +11,15 @@ import DraftGolferSheet from '@/components/lineup/draft-golfer-sheet';
 import LineupSlotRow from '@/components/lineup/lineup-slot-row';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  isFirestoreLineupStorageAvailable,
+  loadTestLineup,
+  saveTestLineup,
+} from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
-import { upsertLineupEntryLocal } from '@/lib/lineup-submission';
+import { upsertLineupEntryLocal, upsertLineupEntryTestFirestore } from '@/lib/lineup-submission';
+import { getTestUserName } from '@/lib/test-users';
 import { getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import {
   loadImportedPlayerPool,
@@ -38,6 +44,7 @@ function LineupContent() {
   const contestId = searchParams.get('contestId') ?? 'week-1-cognizant';
   const userId = searchParams.get('userId') ?? 'guest';
   const contest = getWeeklyContestById(contestId);
+  const userDisplayName = getTestUserName(userId) ?? userId;
 
   const [playerPool, setPlayerPool] = useState<PlayerPoolGolfer[]>([]);
   const [lineupGolferIds, setLineupGolferIds] = useState<string[]>([]);
@@ -45,6 +52,7 @@ function LineupContent() {
   const [draftOpen, setDraftOpen] = useState(false);
   const [countdown, setCountdown] = useState<string>('');
   const [didHydratePersistedEntry, setDidHydratePersistedEntry] = useState(false);
+  const [cloudSaveStatus, setCloudSaveStatus] = useState<'checking' | 'saved' | 'saving' | 'local-only' | 'error'>('checking');
 
   useEffect(() => {
     if (!contest) return;
@@ -56,12 +64,59 @@ function LineupContent() {
       setLineupGolferIds(persisted.lineupGolferIds);
       setSubmittedAtIso(persisted.submittedAtIso ?? null);
     }
-    setDidHydratePersistedEntry(true);
-  }, [contest, userId]);
+
+    let cancelled = false;
+    void (async () => {
+      const cloudEnabled = isFirestoreLineupStorageAvailable();
+      if (!cloudEnabled) {
+        if (!cancelled) {
+          setCloudSaveStatus('local-only');
+          setDidHydratePersistedEntry(true);
+        }
+        return;
+      }
+
+      try {
+        const cloudEntry = await loadTestLineup(contest.id, userId);
+        if (cancelled) return;
+
+        if (cloudEntry) {
+          setLineupGolferIds(cloudEntry.lineupGolferIds);
+          setSubmittedAtIso(cloudEntry.submittedAtIso ?? null);
+          savePersistedLineup({
+            ...cloudEntry,
+            userKey: userId,
+          });
+          setCloudSaveStatus('saved');
+        } else if (persisted) {
+          await saveTestLineup({
+            ...persisted,
+            userKey: userId,
+            userDisplayName,
+          });
+          setCloudSaveStatus('saved');
+        } else {
+          setCloudSaveStatus('saved');
+        }
+      } catch {
+        if (!cancelled) {
+          setCloudSaveStatus('error');
+        }
+      } finally {
+        if (!cancelled) {
+          setDidHydratePersistedEntry(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [contest, userDisplayName, userId]);
 
   useEffect(() => {
     if (!contest) return;
-    const update = () => setCountdown(formatCountdown(contest.lockAtIso));
+    const update = () => setCountdown(contest.lockDisabled ? 'TEST MODE' : formatCountdown(contest.lockAtIso));
     update();
     const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
@@ -81,14 +136,32 @@ function LineupContent() {
 
   useEffect(() => {
     if (!contest || !didHydratePersistedEntry) return;
-    savePersistedLineup({
+    const entry = {
       contestId: contest.id,
       userKey: userId,
+      userDisplayName,
       lineupGolferIds,
       submittedAtIso: submittedAtIso ?? undefined,
       lastEditedAtIso: new Date().toISOString(),
-    });
-  }, [contest, didHydratePersistedEntry, lineupGolferIds, submittedAtIso, userId]);
+    };
+
+    // Keep local cache as immediate fallback.
+    savePersistedLineup(entry);
+
+    if (!isFirestoreLineupStorageAvailable()) {
+      setCloudSaveStatus('local-only');
+      return;
+    }
+
+    setCloudSaveStatus('saving');
+    const timerId = window.setTimeout(() => {
+      void saveTestLineup(entry)
+        .then(() => setCloudSaveStatus('saved'))
+        .catch(() => setCloudSaveStatus('error'));
+    }, 250);
+
+    return () => window.clearTimeout(timerId);
+  }, [contest, didHydratePersistedEntry, lineupGolferIds, submittedAtIso, userDisplayName, userId]);
 
   const toggleGolfer = (golferId: string) => {
     if (!contest || validation?.isLocked) return;
@@ -117,12 +190,38 @@ function LineupContent() {
 
   const handleSubmit = async () => {
     if (!contest) return;
-    const response = await upsertLineupEntryLocal({
-      contest,
-      playerPool,
-      userKey: userId,
-      lineupGolferIds,
-    });
+    let response;
+    try {
+      response = isFirestoreLineupStorageAvailable()
+        ? await upsertLineupEntryTestFirestore({
+            contest,
+            playerPool,
+            userKey: userId,
+            userDisplayName,
+            lineupGolferIds,
+          })
+        : await upsertLineupEntryLocal({
+            contest,
+            playerPool,
+            userKey: userId,
+            userDisplayName,
+            lineupGolferIds,
+          });
+    } catch {
+      setCloudSaveStatus('error');
+      response = await upsertLineupEntryLocal({
+        contest,
+        playerPool,
+        userKey: userId,
+        userDisplayName,
+        lineupGolferIds,
+      });
+      toast({
+        title: 'Cloud save unavailable',
+        description: 'Lineup saved locally only for this browser.',
+        variant: 'destructive',
+      });
+    }
 
     if (!response.success) {
       toast({
@@ -134,6 +233,7 @@ function LineupContent() {
     }
 
     setSubmittedAtIso(response.submittedAtIso ?? new Date().toISOString());
+    setCloudSaveStatus(isFirestoreLineupStorageAvailable() ? 'saved' : 'local-only');
     router.push(`/contests?userId=${encodeURIComponent(userId)}`);
   };
 
@@ -170,9 +270,18 @@ function LineupContent() {
             <div className="grid grid-cols-4 border-b border-zinc-300 bg-[#f2f2f2] text-center text-sm text-zinc-700">
               <div className="px-2 py-3">Entry: {contest.entryFeeDisplay}</div>
               <div className="px-2 py-3">{new Date(contest.lockAtIso).toLocaleString()}</div>
-              <div className="px-2 py-3 font-mono">{countdown}</div>
+              <div className={`px-2 py-3 ${contest.testMode ? 'font-semibold text-amber-700' : 'font-mono'}`}>{countdown}</div>
               <div className="px-2 py-3">{contest.entryNumberLabel}</div>
             </div>
+
+            {contest.testMode && (
+              <div className="flex items-center justify-between gap-2 border-b border-amber-300 bg-amber-100 px-4 py-2 text-sm text-amber-900">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-amber-500/20 text-amber-800 hover:bg-amber-500/20">TEST MODE</Badge>
+                  <span>Lineup lock is disabled for this week&apos;s live tracking test.</span>
+                </div>
+              </div>
+            )}
 
             {submittedAtIso && (
               <div className="flex items-center gap-2 border-b border-zinc-800 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">
@@ -180,6 +289,14 @@ function LineupContent() {
                 Lineup submitted {new Date(submittedAtIso).toLocaleString()}
               </div>
             )}
+
+            <div className="border-b border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs text-zinc-300">
+              {cloudSaveStatus === 'saving' && 'Saving draft to cloud...'}
+              {cloudSaveStatus === 'saved' && 'Saved to cloud (shared across browsers/devices).'}
+              {cloudSaveStatus === 'local-only' && 'Cloud save not configured. This browser only.'}
+              {cloudSaveStatus === 'error' && 'Cloud save failed. Local browser copy still available.'}
+              {cloudSaveStatus === 'checking' && 'Checking cloud save...'}
+            </div>
 
             {!validation.canSubmit && validation.errors.length > 0 && !validation.isLocked && (
               <div className="flex items-start gap-2 border-b border-zinc-800 bg-red-500/10 px-4 py-2 text-sm text-red-300">

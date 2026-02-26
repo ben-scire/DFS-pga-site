@@ -11,6 +11,8 @@ export const WEEKLY_CONTESTS: WeeklyLeagueContest[] = [
     entryFeeDisplay: '$0',
     lockAtIso: '2026-02-26T11:45:00.000Z',
     status: 'open',
+    lockDisabled: true,
+    testMode: true,
     salaryCap: 50000,
     rosterSize: 6,
     entryNumberLabel: '1/25',

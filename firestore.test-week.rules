@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isApprovedUserSlug(userSlug) {
+      return userSlug in [
+        'ben',
+        'yago',
+        'sam',
+        'jack',
+        'coach',
+        'ceec',
+        'nick-london',
+        'rohan',
+        'uncle-neal',
+        'petruney',
+        'sammy',
+        'muncher',
+        'abbo',
+        'jake-d',
+        'tibaudo',
+        'eoin',
+        'jay',
+        'murda',
+        'castronovo',
+        'dylan'
+      ];
+    }
+
+    function isValidTestLineupPayload(data, contestId, userSlug) {
+      return data.keys().hasOnly([
+          'contestId',
+          'userSlug',
+          'userDisplayName',
+          'lineupGolferIds',
+          'submittedAtIso',
+          'lastEditedAtIso',
+          'updatedAt',
+          'source',
+          'version'
+        ]) &&
+        data.contestId == contestId &&
+        data.userSlug == userSlug &&
+        data.userDisplayName is string &&
+        data.lineupGolferIds is list &&
+        data.lineupGolferIds.size() <= 6 &&
+        data.lastEditedAtIso is string &&
+        (!('submittedAtIso' in data) || data.submittedAtIso is string) &&
+        data.source == 'web-test' &&
+        data.version == 1;
+    }
+
+    match /test_lineups/week-1-cognizant/entries/{userSlug} {
+      allow read: if isApprovedUserSlug(userSlug);
+      allow create, update: if isApprovedUserSlug(userSlug) &&
+        isValidTestLineupPayload(request.resource.data, 'week-1-cognizant', userSlug);
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

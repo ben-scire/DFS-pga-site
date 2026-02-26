@@ -19,7 +19,10 @@ export function getLineupValidation(
   const positionsFilled = lineupGolfers.length;
   const salaryRemaining = contest.salaryCap - salaryUsed;
   const slotsRemaining = Math.max(0, contest.rosterSize - positionsFilled);
-  const isLocked = now >= new Date(contest.lockAtIso) || ['locked', 'live', 'final'].includes(contest.status);
+  const lockBypassed = contest.lockDisabled === true;
+  const isLocked =
+    !lockBypassed &&
+    (now >= new Date(contest.lockAtIso) || ['locked', 'live', 'final'].includes(contest.status));
   const duplicateCount = new Set(lineupGolferIds).size !== lineupGolferIds.length;
 
   const errors: string[] = [];
