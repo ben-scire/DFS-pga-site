@@ -4,6 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isApprovedUserSlug(userSlug) {
       return userSlug in [
+        '4588',
         'ben',
         'yago',
         'sam',
@@ -57,9 +58,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /test_scores/week-1-cognizant/golfers/{golferId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-

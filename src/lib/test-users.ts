@@ -4,6 +4,7 @@ export interface TestUserOption {
 }
 
 export const TEST_USERS: TestUserOption[] = [
+  { id: '4588', name: '4588' },
   { id: 'ben', name: 'Ben' },
   { id: 'yago', name: 'Yago' },
   { id: 'sam', name: 'Sam' },
@@ -34,4 +35,3 @@ export function getTestUserName(userId: string | null | undefined): string | nul
   if (!userId) return null;
   return TEST_USER_NAME_BY_ID[userId] ?? null;
 }
-

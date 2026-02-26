@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Radio, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, Radio, RefreshCcw, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { subscribeToTestGolferScores, type TestGolferLiveScore } from '@/lib/firestore-live-scores';
 import {
   isFirestoreLineupStorageAvailable,
   loadTestLineup,
@@ -30,6 +31,8 @@ function LiveLineupContent() {
   const [playerPool, setPlayerPool] = useState<PlayerPoolGolfer[]>([]);
   const [entry, setEntry] = useState<PersistedLineupEntry | null>(null);
   const [cloudStatus, setCloudStatus] = useState<'checking' | 'live' | 'local-only' | 'error'>('checking');
+  const [liveScores, setLiveScores] = useState<Record<string, TestGolferLiveScore>>({});
+  const [scoreStatus, setScoreStatus] = useState<'checking' | 'live' | 'no-feed' | 'error'>('checking');
 
   useEffect(() => {
     if (!contest) return;
@@ -81,6 +84,32 @@ function LiveLineupContent() {
     };
   }, [contest, isValidUser, userId]);
 
+  useEffect(() => {
+    if (!contest) return;
+    if (!isFirestoreLineupStorageAvailable()) {
+      setScoreStatus('no-feed');
+      return;
+    }
+
+    let cancelled = false;
+    const unsubscribe = subscribeToTestGolferScores(
+      contest.id,
+      (scoresByGolferId) => {
+        if (cancelled) return;
+        setLiveScores(scoresByGolferId);
+        setScoreStatus('live');
+      },
+      () => {
+        if (!cancelled) setScoreStatus('error');
+      }
+    );
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [contest]);
+
   const lineupGolfers = useMemo(() => {
     if (!entry) return [];
     const map = new Map(playerPool.map((g) => [g.golferId, g]));
@@ -91,6 +120,27 @@ function LiveLineupContent() {
     if (!contest) return null;
     return getLineupValidation(entry?.lineupGolferIds ?? [], playerPool, contest);
   }, [contest, entry?.lineupGolferIds, playerPool]);
+
+  const lineupLiveStats = useMemo(() => {
+    const rows = lineupGolfers.map((golfer) => ({
+      golfer,
+      score: liveScores[golfer.golferId] ?? null,
+    }));
+    const totalLivePoints = rows.reduce((sum, row) => sum + (row.score?.fantasyPoints ?? 0), 0);
+    const golfersWithLivePoints = rows.filter((row) => typeof row.score?.fantasyPoints === 'number').length;
+    const latestUpdateIso = rows
+      .map((row) => row.score?.updatedAtIso)
+      .filter((value): value is string => Boolean(value))
+      .sort()
+      .at(-1);
+
+    return {
+      rows,
+      totalLivePoints,
+      golfersWithLivePoints,
+      latestUpdateIso,
+    };
+  }, [lineupGolfers, liveScores]);
 
   if (!contest || !validation) {
     return <div className="min-h-screen bg-[#080c13] text-zinc-100" />;
@@ -166,6 +216,35 @@ function LiveLineupContent() {
                   {validation.isUnderSalaryCap ? 'Under Cap' : 'Over Cap'}
                 </p>
               </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">Live Points</p>
+                <p className="mt-1 font-semibold text-emerald-300">{lineupLiveStats.totalLivePoints.toFixed(1)}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">Live Feed</p>
+                <p className="mt-1 font-semibold">
+                  {scoreStatus === 'live' ? `${lineupLiveStats.golfersWithLivePoints}/${lineupGolfers.length} players` : '--'}
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 md:col-span-2">
+                <p className="text-xs uppercase tracking-wide text-zinc-500">Last Live Update</p>
+                <p className="mt-1 font-semibold text-zinc-100">
+                  {lineupLiveStats.latestUpdateIso ? new Date(lineupLiveStats.latestUpdateIso).toLocaleString() : 'Waiting for live score docs'}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-blue-400/10 bg-blue-400/5 p-4 text-sm text-zinc-300">
+              <div className="flex items-center gap-2 font-medium text-zinc-100">
+                <TrendingUp className="h-4 w-4 text-blue-300" />
+                Live points feed status
+              </div>
+              <p className="mt-1 text-zinc-400">
+                {scoreStatus === 'live' && 'Reading live golfer score docs from Firestore (`test_scores`).'}
+                {scoreStatus === 'checking' && 'Connecting to live score docs...'}
+                {scoreStatus === 'no-feed' && 'Firestore is not configured in this build, so live score docs are unavailable.'}
+                {scoreStatus === 'error' && 'Live score subscription failed. Showing lineup without live points.'}
+              </p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-[#0a1018] p-3">
@@ -178,7 +257,7 @@ function LiveLineupContent() {
 
               {lineupGolfers.length ? (
                 <div className="space-y-2">
-                  {lineupGolfers.map((golfer, idx) => (
+                  {lineupLiveStats.rows.map(({ golfer, score }, idx) => (
                     <div key={golfer.golferId} className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2">
                       <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-zinc-200">
                         {idx + 1}
@@ -186,12 +265,21 @@ function LiveLineupContent() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-zinc-100">{golfer.name}</p>
                         <p className="text-xs text-zinc-400">
-                          {golfer.teeTimeDisplay ?? 'Tee time TBD'} · FPPG {golfer.fppg?.toFixed(1) ?? '-'} · AVG {golfer.avgScore?.toFixed(1) ?? '-'}
+                          {score?.position ? `POS ${score.position}` : 'POS --'} ·{' '}
+                          {score?.scoreToPar !== undefined ? `Score ${score.scoreToPar}` : 'Score --'} ·{' '}
+                          {score?.thru !== undefined ? `Thru ${score.thru}` : 'Thru --'} ·{' '}
+                          {score?.status ? score.status.toUpperCase() : golfer.teeTimeDisplay ?? 'Pre-round'}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="min-w-[108px] text-right">
+                        <p className="font-semibold text-emerald-300">
+                          {typeof score?.fantasyPoints === 'number' ? score.fantasyPoints.toFixed(1) : '--'}
+                        </p>
+                        <p className="text-xs text-zinc-500">LIVE PTS</p>
+                      </div>
+                      <div className="min-w-[86px] text-right">
                         <p className="font-semibold text-zinc-200">${golfer.salary.toLocaleString()}</p>
-                        <p className="text-xs text-zinc-500">G</p>
+                        <p className="text-xs text-zinc-500">SALARY</p>
                       </div>
                     </div>
                   ))}
@@ -204,9 +292,10 @@ function LiveLineupContent() {
             </div>
 
             <div className="rounded-2xl border border-emerald-400/10 bg-emerald-400/5 p-4 text-sm text-zinc-300">
-              <p className="font-medium text-zinc-100">Live scoring tracker next</p>
+              <p className="font-medium text-zinc-100">Live points are now supported</p>
               <p className="mt-1 text-zinc-400">
-                This page shows the real submitted lineup from Firestore. Live golfer scoring/points feed can be layered onto this view next.
+                Populate Firestore docs at <span className="font-mono text-zinc-300">test_scores/{contest.id}/golfers/&lt;golferId&gt;</span> with a{' '}
+                <span className="font-mono text-zinc-300">fantasyPoints</span> field (and optional position/thru/status) to drive this view.
               </p>
             </div>
           </CardContent>
