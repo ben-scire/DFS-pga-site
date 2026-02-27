@@ -4,27 +4,22 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isApprovedUserSlug(userSlug) {
       return userSlug in [
-        '4588',
-        'ben',
-        'yago',
-        'sam',
-        'jack',
-        'coach',
-        'ceec',
-        'nick-london',
-        'rohan',
-        'uncle-neal',
-        'petruney',
-        'sammy',
-        'muncher',
-        'abbo',
-        'jake-d',
-        'tibaudo',
-        'eoin',
-        'jay',
-        'murda',
-        'castronovo',
-        'dylan'
+        'wyaggy3',
+        'abboduece22',
+        'mtibaudo',
+        'johncastronovo',
+        'cm30',
+        'rohansharma99',
+        'jvaccari33',
+        'sam.scire',
+        'capc',
+        'boxmuncher',
+        'jakdot2009',
+        'dylangoody',
+        'samthemaam5',
+        'tomlinsonj15',
+        'jpetruney',
+        'bscire'
       ];
     }
 

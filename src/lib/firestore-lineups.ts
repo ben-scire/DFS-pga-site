@@ -1,9 +1,11 @@
 import {
+  collection,
   doc,
   getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
+  type QueryDocumentSnapshot,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { getFirestoreClient } from '@/lib/firebase-client';
@@ -19,6 +21,10 @@ interface TestLineupDoc {
   updatedAt?: unknown;
   source: 'web-test';
   version: 1;
+}
+
+export interface ContestLineupEntry extends PersistedLineupEntry {
+  userDisplayName: string;
 }
 
 function isValidLineupDoc(data: unknown): data is TestLineupDoc {
@@ -41,6 +47,16 @@ function toPersistedEntry(data: TestLineupDoc): PersistedLineupEntry {
     lineupGolferIds: Array.isArray(data.lineupGolferIds) ? data.lineupGolferIds : [],
     submittedAtIso: data.submittedAtIso,
     lastEditedAtIso: data.lastEditedAtIso,
+  };
+}
+
+function parseContestLineupDoc(snap: QueryDocumentSnapshot): ContestLineupEntry | null {
+  const data = snap.data();
+  if (!isValidLineupDoc(data)) return null;
+  const entry = toPersistedEntry(data);
+  return {
+    ...entry,
+    userDisplayName: data.userDisplayName,
   };
 }
 
@@ -68,6 +84,12 @@ export function getTestLineupDocRef(contestId: string, userSlug: string) {
   const db = getFirestoreClient();
   if (!db) return null;
   return doc(db, 'test_lineups', contestId, 'entries', userSlug);
+}
+
+export function getTestLineupsCollectionRef(contestId: string) {
+  const db = getFirestoreClient();
+  if (!db) return null;
+  return collection(db, 'test_lineups', contestId, 'entries');
 }
 
 export async function loadTestLineup(
@@ -138,6 +160,34 @@ export function subscribeToTestLineup(
     },
     (error) => {
       onError?.(error instanceof Error ? error : new Error('Firestore subscription failed'));
+    }
+  );
+}
+
+export function subscribeToContestLineups(
+  contestId: string,
+  onEntries: (entries: ContestLineupEntry[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const ref = getTestLineupsCollectionRef(contestId);
+  if (!ref) {
+    onEntries([]);
+    return () => {};
+  }
+
+  return onSnapshot(
+    ref,
+    (snap) => {
+      const entries: ContestLineupEntry[] = [];
+      for (const docSnap of snap.docs) {
+        const parsed = parseContestLineupDoc(docSnap);
+        if (!parsed) continue;
+        entries.push(parsed);
+      }
+      onEntries(entries);
+    },
+    (error) => {
+      onError?.(error instanceof Error ? error : new Error('Contest lineup subscription failed'));
     }
   );
 }

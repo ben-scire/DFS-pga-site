@@ -19,7 +19,7 @@ import {
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
 import { upsertLineupEntryLocal, upsertLineupEntryTestFirestore } from '@/lib/lineup-submission';
-import { getTestUserName } from '@/lib/test-users';
+import { getTestUserName, TEST_USERS } from '@/lib/test-users';
 import { getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import {
   loadImportedPlayerPool,
@@ -195,7 +195,7 @@ function LineupContent() {
     if (contest.testMode && !isValidTestUser) {
       toast({
         title: 'Select a valid user',
-        description: 'Open the home page and choose one of the 20 test users before submitting.',
+        description: `Open the home page and choose one of the ${TEST_USERS.length} test users before submitting.`,
         variant: 'destructive',
       });
       return;

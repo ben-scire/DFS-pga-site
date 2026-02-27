@@ -167,6 +167,11 @@ function LiveLineupContent() {
                   <RefreshCcw className="mr-2 h-4 w-4" /> Edit Lineup
                 </Link>
               </Button>
+              <Button asChild variant="outline" className="border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
+                <Link href={`/live-leaderboard?contestId=${contest.id}&userId=${encodeURIComponent(userId)}`}>
+                  <TrendingUp className="mr-2 h-4 w-4" /> Leaderboard
+                </Link>
+              </Button>
             </div>
           </div>
         </header>

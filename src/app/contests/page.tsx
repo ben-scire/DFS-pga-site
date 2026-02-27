@@ -311,6 +311,17 @@ function ContestsContent() {
                       View Live Lineup
                     </Link>
                   </Button>
+                  <Button asChild variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
+                    <Link
+                      href={
+                        isValidTestUser
+                          ? `/live-leaderboard?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}`
+                          : '/'
+                      }
+                    >
+                      View Live Leaderboard
+                    </Link>
+                  </Button>
                   {!isValidTestUser && (
                     <Button
                       type="button"
@@ -391,20 +402,33 @@ function ContestsContent() {
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                       <p className="text-xs uppercase tracking-wide text-zinc-500">Scoring</p>
-                      <p className="mt-1 font-semibold text-zinc-100">Coming next</p>
+                      <p className="mt-1 font-semibold text-zinc-100">Live DFS Rules</p>
                     </div>
                   </div>
-                  <Button asChild variant="outline" className="w-full rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                    <Link
-                      href={
-                        isValidTestUser
-                          ? `/live-lineup?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}`
-                          : '/'
-                      }
-                    >
-                      Open Live Lineup View
-                    </Link>
-                  </Button>
+                  <div className="grid gap-2">
+                    <Button asChild variant="outline" className="w-full rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
+                      <Link
+                        href={
+                          isValidTestUser
+                            ? `/live-lineup?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}`
+                            : '/'
+                        }
+                      >
+                        Open Live Lineup View
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="w-full rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
+                      <Link
+                        href={
+                          isValidTestUser
+                            ? `/live-leaderboard?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}`
+                            : '/'
+                        }
+                      >
+                        Open Live Leaderboard
+                      </Link>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>

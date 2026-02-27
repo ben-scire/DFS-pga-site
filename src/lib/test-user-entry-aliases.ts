@@ -2,19 +2,7 @@ import { TEST_USERS } from './test-users';
 import { normalizeNameForMatching } from './contest-standings-import';
 
 const ENTRY_NAME_TO_TEST_USER_SLUG: Record<string, string> = {
-  abboduece22: 'abbo',
-  boxmuncher: 'muncher',
-  dylangoody: 'dylan',
-  jakdot2009: 'jake-d',
-  johncastronovo: 'castronovo',
-  jpetruney: 'petruney',
-  jvaccari33: 'jay',
-  mtibaudo: 'tibaudo',
-  rohansharma99: 'rohan',
-  samthemaam5: 'sammy',
-  'sam.scire': 'sam',
-  tomlinsonj15: 'jack',
-  wyaggy3: 'yago',
+  // Keep empty by default; current test users intentionally match CSV entry names.
 };
 
 const TEST_USERS_BY_SLUG = new Map(TEST_USERS.map((user) => [user.id, user]));
