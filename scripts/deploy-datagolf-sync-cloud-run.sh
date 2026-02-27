@@ -36,11 +36,37 @@ if [[ -z "${DATAGOLF_API_KEY}" ]]; then
 fi
 
 DATAGOLF_LIVE_URL="${DATAGOLF_LIVE_URL:-https://feeds.datagolf.com/preds/live-hole-scores?tour=${TOUR}&file_format=json&key={key}}"
+DATAGOLF_TOURNAMENT_STATS_URL="${DATAGOLF_TOURNAMENT_STATS_URL:-}"
+
+if [[ "${DATAGOLF_LIVE_URL}" == *"{key}}"* ]]; then
+  echo "DATAGOLF_LIVE_URL looks malformed (contains '{key}}'). Remove the extra '}'."
+  exit 1
+fi
+
+if [[ -n "${DATAGOLF_TOURNAMENT_STATS_URL}" && "${DATAGOLF_TOURNAMENT_STATS_URL}" == *"{key}}"* ]]; then
+  echo "DATAGOLF_TOURNAMENT_STATS_URL looks malformed (contains '{key}}'). Remove the extra '}'."
+  exit 1
+fi
+
+if [[ "${DATAGOLF_LIVE_URL}" == *"["*"]"* ]]; then
+  echo "DATAGOLF_LIVE_URL still contains docs placeholders (e.g. [round]). Use a concrete URL."
+  exit 1
+fi
+
+if [[ -n "${DATAGOLF_TOURNAMENT_STATS_URL}" && "${DATAGOLF_TOURNAMENT_STATS_URL}" == *"["*"]"* ]]; then
+  echo "DATAGOLF_TOURNAMENT_STATS_URL still contains docs placeholders (e.g. [round]). Use a concrete URL."
+  exit 1
+fi
 
 RUNTIME_SA_EMAIL="${RUNTIME_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 SCHEDULER_SA_EMAIL="${SCHEDULER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:latest"
 JOB_RUN_URI="https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/jobs/${JOB_NAME}:run"
+
+ENV_VARS="^@^DATAGOLF_LIVE_URL=${DATAGOLF_LIVE_URL}@DATAGOLF_SCORING_MODE=${SCORING_MODE}"
+if [[ -n "${DATAGOLF_TOURNAMENT_STATS_URL}" ]]; then
+  ENV_VARS="${ENV_VARS}@DATAGOLF_TOURNAMENT_STATS_URL=${DATAGOLF_TOURNAMENT_STATS_URL}"
+fi
 
 echo "Project: ${PROJECT_ID}"
 echo "Region: ${REGION}"
@@ -122,7 +148,7 @@ gcloud run jobs deploy "${JOB_NAME}" \
   --region "${REGION}" \
   --image "${IMAGE_URI}" \
   --service-account "${RUNTIME_SA_EMAIL}" \
-  --set-env-vars "DATAGOLF_LIVE_URL=${DATAGOLF_LIVE_URL},DATAGOLF_SCORING_MODE=${SCORING_MODE}" \
+  --set-env-vars "${ENV_VARS}" \
   --set-secrets "DATAGOLF_API_KEY=${DATAGOLF_SECRET_NAME}:latest" \
   --task-timeout 900s \
   --max-retries 1 \
