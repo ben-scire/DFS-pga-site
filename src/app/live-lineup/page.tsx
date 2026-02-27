@@ -19,14 +19,35 @@ import { getTestUserName } from '@/lib/test-users';
 import { getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool, loadPersistedLineup, savePersistedLineup } from '@/lib/weekly-lineup-storage';
 
+function formatToPar(value: string | number | undefined): string {
+  if (value === undefined) return '--';
+  if (typeof value === 'number') {
+    if (value === 0) return 'E';
+    return value > 0 ? `+${value}` : `${value}`;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return '--';
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) return trimmed.toUpperCase();
+  if (parsed === 0) return 'E';
+  return parsed > 0 ? `+${parsed}` : `${parsed}`;
+}
+
+function formatPosition(value: string | undefined): string {
+  if (!value?.trim()) return '--';
+  return value.trim().toUpperCase();
+}
+
 function LiveLineupContent() {
   const searchParams = useSearchParams();
   const contestId = searchParams.get('contestId') ?? 'week-1-cognizant';
-  const userId = searchParams.get('userId') ?? 'guest';
+  const lineupUserId = searchParams.get('userId') ?? 'guest';
+  const viewerUserId = searchParams.get('viewerId')?.trim() || lineupUserId;
 
   const contest = getWeeklyContestById(contestId);
-  const userName = getTestUserName(userId) ?? userId;
-  const isValidUser = Boolean(getTestUserName(userId));
+  const lineupUserName = getTestUserName(lineupUserId) ?? lineupUserId;
+  const isValidUser = Boolean(getTestUserName(lineupUserId));
 
   const [playerPool, setPlayerPool] = useState<PlayerPoolGolfer[]>([]);
   const [entry, setEntry] = useState<PersistedLineupEntry | null>(null);
@@ -39,7 +60,7 @@ function LiveLineupContent() {
     const imported = loadImportedPlayerPool(contest.id);
     setPlayerPool(imported && imported.length ? imported : getDefaultPlayerPool(contest.id));
 
-    const local = loadPersistedLineup(contest.id, userId);
+    const local = loadPersistedLineup(contest.id, lineupUserId);
     setEntry(local);
 
     if (!isValidUser || !isFirestoreLineupStorageAvailable()) {
@@ -50,11 +71,11 @@ function LiveLineupContent() {
     let cancelled = false;
     void (async () => {
       try {
-        const cloudEntry = await loadTestLineup(contest.id, userId);
+        const cloudEntry = await loadTestLineup(contest.id, lineupUserId);
         if (cancelled) return;
         if (cloudEntry) {
           setEntry(cloudEntry);
-          savePersistedLineup({ ...cloudEntry, userKey: userId });
+          savePersistedLineup({ ...cloudEntry, userKey: lineupUserId });
         }
         setCloudStatus('live');
       } catch {
@@ -64,12 +85,12 @@ function LiveLineupContent() {
 
     const unsubscribe = subscribeToTestLineup(
       contest.id,
-      userId,
+      lineupUserId,
       (nextEntry) => {
         if (cancelled) return;
         if (nextEntry) {
           setEntry(nextEntry);
-          savePersistedLineup({ ...nextEntry, userKey: userId });
+          savePersistedLineup({ ...nextEntry, userKey: lineupUserId });
         }
         setCloudStatus('live');
       },
@@ -82,7 +103,7 @@ function LiveLineupContent() {
       cancelled = true;
       unsubscribe();
     };
-  }, [contest, isValidUser, userId]);
+  }, [contest, isValidUser, lineupUserId]);
 
   useEffect(() => {
     if (!contest) return;
@@ -154,21 +175,21 @@ function LiveLineupContent() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-400">5x5 Global</p>
               <h1 className="mt-2 text-3xl font-bold tracking-tight">Live Lineup View</h1>
-              <p className="mt-2 text-sm text-zinc-400">{contest.name} · {userName}</p>
+              <p className="mt-2 text-sm text-zinc-400">{contest.name} · {lineupUserName}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" className="border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                <Link href={`/contests?userId=${encodeURIComponent(userId)}`}>
+                <Link href={`/contests?userId=${encodeURIComponent(viewerUserId)}`}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back to Contests
                 </Link>
               </Button>
               <Button asChild className="bg-blue-500 text-white hover:bg-blue-400">
-                <Link href={`/lineup?contestId=${contest.id}&userId=${encodeURIComponent(userId)}`}>
-                  <RefreshCcw className="mr-2 h-4 w-4" /> Edit Lineup
+                <Link href={`/lineup?contestId=${contest.id}&userId=${encodeURIComponent(viewerUserId)}`}>
+                  <RefreshCcw className="mr-2 h-4 w-4" /> View Lineup
                 </Link>
               </Button>
               <Button asChild variant="outline" className="border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                <Link href={`/live-leaderboard?contestId=${contest.id}&userId=${encodeURIComponent(userId)}`}>
+                <Link href={`/live-leaderboard?contestId=${contest.id}&userId=${encodeURIComponent(viewerUserId)}`}>
                   <TrendingUp className="mr-2 h-4 w-4" /> Leaderboard
                 </Link>
               </Button>
@@ -270,8 +291,8 @@ function LiveLineupContent() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-zinc-100">{golfer.name}</p>
                         <p className="text-xs text-zinc-400">
-                          {score?.position ? `POS ${score.position}` : 'POS --'} ·{' '}
-                          {score?.scoreToPar !== undefined ? `Score ${score.scoreToPar}` : 'Score --'} ·{' '}
+                          {`PGA POS ${formatPosition(score?.position)}`} ·{' '}
+                          {`To Par ${formatToPar(score?.scoreToPar)}`} ·{' '}
                           {score?.thru !== undefined ? `Thru ${score.thru}` : 'Thru --'} ·{' '}
                           {score?.status ? score.status.toUpperCase() : golfer.teeTimeDisplay ?? 'Pre-round'}
                         </p>

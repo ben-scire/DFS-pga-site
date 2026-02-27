@@ -22,6 +22,7 @@ type GenericRow = Record<string, unknown>;
 type NormalizedLiveRow = {
   playerName: string;
   position?: string;
+  livePositionPoints?: number;
   scoreToPar?: string | number;
   thru?: string | number;
   today?: string | number;
@@ -118,8 +119,10 @@ async function syncOnce(input: {
   }
 
   const rawBody = await response.text();
-  const rows = parseUpstreamRows(rawBody, response.headers.get('content-type'));
+  const primaryRows = parseUpstreamRows(rawBody, response.headers.get('content-type'));
+  const rows = await mergeTournamentStatsRows(input.liveUrl, primaryRows);
   const normalizedRows = rows.map(normalizeLiveRow).filter((row): row is NormalizedLiveRow => Boolean(row));
+  const scoredRows = applyLivePositionPoints(normalizedRows);
 
   const db = input.dryRun ? null : getFirestore();
   let matched = 0;
@@ -130,7 +133,7 @@ async function syncOnce(input: {
   let withoutFantasyPoints = 0;
   const unmatchedExamples: string[] = [];
 
-  for (const row of normalizedRows) {
+  for (const row of scoredRows) {
     const golfer = resolveGolferFromLiveName(
       row.playerName,
       input.golfersByName,
@@ -179,7 +182,7 @@ async function syncOnce(input: {
   }
 
   return {
-    totalRows: normalizedRows.length,
+    totalRows: scoredRows.length,
     matched,
     unmatched,
     unmatchedExamples,
@@ -255,6 +258,7 @@ Env (required unless --url is provided):
   DATAGOLF_API_KEY         Optional; substituted into DATAGOLF_LIVE_URL when {key} is present.
   DATAGOLF_POLL_INTERVAL_MS  Poll interval (default 30000)
   DATAGOLF_SCORING_MODE    dfs-rules | hybrid | upstream (default: dfs-rules)
+  DATAGOLF_TOURNAMENT_STATS_URL Optional endpoint for position/total/thru enrichment.
 
 Firebase Admin auth (required for writes, not for --dry-run):
   FIREBASE_SERVICE_ACCOUNT_JSON   Raw service account JSON string
@@ -267,16 +271,30 @@ function buildLiveUrl(urlOverride?: string): string {
   if (!raw) {
     throw new Error('Missing live feed URL. Set DATAGOLF_LIVE_URL or pass --url.');
   }
+  return resolveDataGolfUrl(raw);
+}
 
+function resolveDataGolfUrl(raw: string): string {
   const apiKey = (process.env.DATAGOLF_API_KEY ?? '').trim();
   if (raw.includes('{key}')) {
     if (!apiKey) {
-      throw new Error('DATAGOLF_LIVE_URL contains {key} but DATAGOLF_API_KEY is missing.');
+      throw new Error('Data Golf URL contains {key} but DATAGOLF_API_KEY is missing.');
     }
     return raw.replaceAll('{key}', encodeURIComponent(apiKey));
   }
-
   return raw;
+}
+
+function buildTournamentStatsUrl(liveUrl: string): string | null {
+  const override = (process.env.DATAGOLF_TOURNAMENT_STATS_URL ?? '').trim();
+  if (override) {
+    return resolveDataGolfUrl(override);
+  }
+
+  if (liveUrl.includes('live-hole-scores')) {
+    return liveUrl.replace('live-hole-scores', 'live-tournament-stats');
+  }
+  return null;
 }
 
 function initFirebaseAdmin() {
@@ -458,6 +476,65 @@ function parseUpstreamRows(body: string, contentType: string | null): GenericRow
   return objectRows.filter(isObject) as GenericRow[];
 }
 
+async function mergeTournamentStatsRows(liveUrl: string, primaryRows: GenericRow[]): Promise<GenericRow[]> {
+  const statsUrl = buildTournamentStatsUrl(liveUrl);
+  if (!statsUrl) return primaryRows;
+
+  try {
+    const response = await fetch(statsUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json, text/csv;q=0.9, */*;q=0.8',
+        'User-Agent': '5x5-studio-live-sync/1.0',
+      },
+      cache: 'no-store',
+    });
+    if (!response.ok) return primaryRows;
+
+    const body = await response.text();
+    const statsRows = parseUpstreamRows(body, response.headers.get('content-type'));
+    if (!statsRows.length) return primaryRows;
+
+    const statsByDgId = new Map<number, GenericRow>();
+    const statsByName = new Map<string, GenericRow>();
+
+    for (const row of statsRows) {
+      const dgId = readNumber(row, ['dg_id', 'dgId']);
+      if (typeof dgId === 'number') {
+        statsByDgId.set(dgId, row);
+      }
+
+      const name = readString(row, ['player_name', 'name', 'player']);
+      if (name) {
+        statsByName.set(normalizeNameForMatching(name), row);
+      }
+    }
+
+    return primaryRows.map((row) => {
+      const dgId = readNumber(row, ['dg_id', 'dgId']);
+      let stats: GenericRow | undefined;
+      if (typeof dgId === 'number') {
+        stats = statsByDgId.get(dgId);
+      }
+      if (!stats) {
+        const name = readString(row, ['player_name', 'name', 'player']);
+        if (name) {
+          stats = statsByName.get(normalizeNameForMatching(name));
+        }
+      }
+      if (!stats) return row;
+
+      // Keep primary scorecard fields and augment with tournament-level position/total/thru data.
+      return {
+        ...stats,
+        ...row,
+      };
+    });
+  } catch {
+    return primaryRows;
+  }
+}
+
 function extractFirstArray(payload: GenericRow): unknown[] {
   const preferredKeys = [
     'field',
@@ -535,13 +612,20 @@ function resolveFantasyPoints(
   row: NormalizedLiveRow,
   scoringMode: DfsScoringMode
 ): { value?: number; source: 'dfs-rules' | 'upstream' | 'none' } {
+  const livePositionPoints = row.livePositionPoints ?? 0;
   const fromRules =
     typeof row.scorecardFantasyPoints === 'number'
       ? row.scorecardFantasyPoints
-      : computeFantasyPointsFromDfsRules(row.rawRow, row);
+      : computeFantasyPointsFromDfsRules(row.rawRow);
+  const rulesWithLivePosition =
+    typeof fromRules === 'number'
+      ? roundToTenth(fromRules + livePositionPoints)
+      : livePositionPoints > 0
+        ? roundToTenth(livePositionPoints)
+        : undefined;
 
   if (scoringMode === 'dfs-rules') {
-    if (typeof fromRules === 'number') return { value: fromRules, source: 'dfs-rules' };
+    if (typeof rulesWithLivePosition === 'number') return { value: rulesWithLivePosition, source: 'dfs-rules' };
     return { source: 'none' };
   }
 
@@ -552,8 +636,8 @@ function resolveFantasyPoints(
     return { source: 'none' };
   }
 
-  if (typeof fromRules === 'number') {
-    return { value: fromRules, source: 'dfs-rules' };
+  if (typeof rulesWithLivePosition === 'number') {
+    return { value: rulesWithLivePosition, source: 'dfs-rules' };
   }
   if (typeof row.upstreamFantasyPoints === 'number') {
     return { value: roundToTenth(row.upstreamFantasyPoints), source: 'upstream' };
@@ -561,10 +645,7 @@ function resolveFantasyPoints(
   return { source: 'none' };
 }
 
-function computeFantasyPointsFromDfsRules(
-  sourceRow: GenericRow,
-  row: Pick<NormalizedLiveRow, 'position' | 'status' | 'thru'>
-): number | undefined {
+function computeFantasyPointsFromDfsRules(sourceRow: GenericRow): number | undefined {
   const scorecardDerived = deriveFromHoleScorecards(sourceRow);
   if (scorecardDerived) {
     return scorecardDerived.fantasyPoints;
@@ -599,10 +680,6 @@ function computeFantasyPointsFromDfsRules(
   const bogeyFreeRounds = readCount(sourceRow, ['bogey_free_rounds', 'bogey_free_round']);
   const allRoundsUnder70 = readCount(sourceRow, ['all_rounds_under_70']) || asFlagCount(readUnknown(sourceRow, ['all_rounds_under_70']));
 
-  const shouldApplyFinishingPoints = isTournamentFinal(sourceRow, row);
-  const finishingPosition = shouldApplyFinishingPoints ? parseFinishingPosition(row.position ?? '') : null;
-  const finishingPoints = finishingPosition ? getFinishingPoints(finishingPosition) : 0;
-
   const hasAnyScoringInputs =
     doubleEagles +
       eagles +
@@ -614,7 +691,7 @@ function computeFantasyPointsFromDfsRules(
       threeBirdieStreaks +
       bogeyFreeRounds +
       allRoundsUnder70 >
-      0 || finishingPoints > 0;
+      0;
 
   if (!hasAnyScoringInputs) {
     return undefined;
@@ -630,34 +707,9 @@ function computeFantasyPointsFromDfsRules(
     holeInOnes * 10 +
     threeBirdieStreaks * 3 +
     bogeyFreeRounds * 3 +
-    allRoundsUnder70 * 5 +
-    finishingPoints;
+    allRoundsUnder70 * 5;
 
   return roundToTenth(total);
-}
-
-function isTournamentFinal(
-  sourceRow: GenericRow,
-  row: Pick<NormalizedLiveRow, 'status' | 'thru'>
-): boolean {
-  if (readBoolean(sourceRow, ['is_tournament_complete', 'tournament_complete', 'event_complete', 'is_final', 'final'])) {
-    return true;
-  }
-
-  const status = (row.status ?? '').trim().toLowerCase();
-  if (['final', 'finished', 'complete', 'completed'].includes(status)) {
-    return true;
-  }
-
-  const thruValue = typeof row.thru === 'string' ? row.thru.trim().toLowerCase() : String(row.thru ?? '').toLowerCase();
-  if (thruValue === 'f' || thruValue === 'final') {
-    const roundsComplete = readNumber(sourceRow, ['rounds_completed', 'rounds_complete']);
-    if (roundsComplete !== undefined && roundsComplete >= 4) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 function parseFinishingPosition(position: string): number | null {
@@ -692,6 +744,36 @@ function getFinishingPoints(position: number): number {
   return 0;
 }
 
+function applyLivePositionPoints(rows: NormalizedLiveRow[]): NormalizedLiveRow[] {
+  const indexesByPosition = new Map<number, number[]>();
+
+  for (let index = 0; index < rows.length; index += 1) {
+    const parsed = parseFinishingPosition(rows[index].position ?? '');
+    if (!parsed) continue;
+    const list = indexesByPosition.get(parsed) ?? [];
+    list.push(index);
+    indexesByPosition.set(parsed, list);
+  }
+
+  const pointsByIndex = new Map<number, number>();
+  for (const [position, indexes] of indexesByPosition.entries()) {
+    const count = indexes.length;
+    const totalPoints = Array.from({ length: count }, (_, offset) => getFinishingPoints(position + offset)).reduce(
+      (sum, value) => sum + value,
+      0
+    );
+    const perPlayerPoints = count > 0 ? totalPoints / count : 0;
+    for (const index of indexes) {
+      pointsByIndex.set(index, roundToTenth(perPlayerPoints));
+    }
+  }
+
+  return rows.map((row, index) => ({
+    ...row,
+    livePositionPoints: pointsByIndex.get(index) ?? 0,
+  }));
+}
+
 interface HoleScoreCell {
   hole?: unknown;
   par?: unknown;
@@ -721,6 +803,7 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
   let pars = 0;
   let bogeys = 0;
   let doubleOrWorse = 0;
+  let holeInOnes = 0;
   let threeBirdieStreaks = 0;
   let bogeyFreeRounds = 0;
   let completedRoundsUnder70 = 0;
@@ -748,6 +831,7 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
     let completedHoles = 0;
     let hasBogeyOrWorse = false;
     let currentBirdieRun = 0;
+    let hasThreeBirdieStreak = false;
 
     for (const cell of ordered) {
       const par = toSafeInt(cell.par);
@@ -769,12 +853,16 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
       else if (delta === 1) bogeys += 1;
       else if (delta >= 2) doubleOrWorse += 1;
 
+      if (par === 3 && score === 1) {
+        holeInOnes += 1;
+      }
+
       if (delta <= -1) {
         currentBirdieRun += 1;
-      } else {
         if (currentBirdieRun >= 3) {
-          threeBirdieStreaks += Math.floor(currentBirdieRun / 3);
+          hasThreeBirdieStreak = true;
         }
+      } else {
         currentBirdieRun = 0;
       }
 
@@ -783,8 +871,9 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
       }
     }
 
-    if (currentBirdieRun >= 3) {
-      threeBirdieStreaks += Math.floor(currentBirdieRun / 3);
+    if (hasThreeBirdieStreak || currentBirdieRun >= 3) {
+      // DraftKings awards this bonus max once per round.
+      threeBirdieStreaks += 1;
     }
 
     totalToPar += roundToPar;
@@ -808,11 +897,6 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
   }
 
   const allRoundsUnder70 = completedRounds >= 4 && completedRoundsUnder70 === completedRounds ? 1 : 0;
-  const finalByRounds = completedRounds >= 4;
-  const finishingPosition = finalByRounds
-    ? parseFinishingPosition(readStringish(row, ['position', 'pos', 'rank', 'place']) ?? '')
-    : null;
-  const finishingPoints = finishingPosition ? getFinishingPoints(finishingPosition) : 0;
 
   const fantasy =
     doubleEagles * 20 +
@@ -821,10 +905,10 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
     pars * 0.5 +
     bogeys * -0.5 +
     doubleOrWorse * -1 +
+    holeInOnes * 10 +
     threeBirdieStreaks * 3 +
     bogeyFreeRounds * 3 +
-    allRoundsUnder70 * 5 +
-    finishingPoints;
+    allRoundsUnder70 * 5;
 
   const thru: string | number = activeRoundHoles >= 18 ? 'F' : activeRoundHoles;
   const status = completedHolesTotal === 0 ? 'upcoming' : activeRoundHoles >= 18 ? 'round-complete' : 'live';

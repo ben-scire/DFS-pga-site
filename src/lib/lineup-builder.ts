@@ -10,6 +10,7 @@ export function getLineupValidation(
   contest: WeeklyLeagueContest,
   now = new Date()
 ): LineupValidationResult {
+  const forceGlobalLock = true;
   const poolById = new Map(playerPool.map((golfer) => [golfer.golferId, golfer]));
   const lineupGolfers = lineupGolferIds
     .map((id) => poolById.get(id))
@@ -20,9 +21,10 @@ export function getLineupValidation(
   const salaryRemaining = contest.salaryCap - salaryUsed;
   const slotsRemaining = Math.max(0, contest.rosterSize - positionsFilled);
   const lockBypassed = contest.lockDisabled === true;
-  const isLocked =
+  const scheduleLocked =
     !lockBypassed &&
     (now >= new Date(contest.lockAtIso) || ['locked', 'live', 'final'].includes(contest.status));
+  const isLocked = forceGlobalLock || scheduleLocked;
   const duplicateCount = new Set(lineupGolferIds).size !== lineupGolferIds.length;
 
   const errors: string[] = [];

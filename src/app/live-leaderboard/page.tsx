@@ -36,10 +36,10 @@ interface LeaderboardLineupEntry {
 function LiveLeaderboardContent() {
   const searchParams = useSearchParams();
   const contestId = searchParams.get('contestId') ?? 'week-1-cognizant';
-  const userId = searchParams.get('userId') ?? '';
+  const viewerUserId = searchParams.get('userId')?.trim() || 'guest';
 
   const contest = getWeeklyContestById(contestId);
-  const userName = getTestUserName(userId) ?? userId;
+  const viewerUserName = getTestUserName(viewerUserId) ?? viewerUserId;
 
   const [playerPool, setPlayerPool] = useState<PlayerPoolGolfer[]>([]);
   const [lineups, setLineups] = useState<LeaderboardLineupEntry[]>([]);
@@ -188,12 +188,12 @@ function LiveLeaderboardContent() {
               <h1 className="mt-2 text-3xl font-bold tracking-tight">Live Contest Leaderboard</h1>
               <p className="mt-2 text-sm text-zinc-400">
                 {contest.name}
-                {userName ? ` · Viewing as ${userName}` : ''}
+                {viewerUserName ? ` · Viewing as ${viewerUserName}` : ''}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" className="border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                <Link href={userId ? `/contests?userId=${encodeURIComponent(userId)}` : '/contests'}>
+                <Link href={viewerUserId ? `/contests?userId=${encodeURIComponent(viewerUserId)}` : '/contests'}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back to Contests
                 </Link>
               </Button>
@@ -237,7 +237,7 @@ function LiveLeaderboardContent() {
             {rows.length ? (
               <div className="space-y-2">
                 {rows.map((row) => {
-                  const isCurrentUser = row.userSlug === userId;
+                  const isCurrentUser = row.userSlug === viewerUserId;
                   return (
                     <div
                       key={row.userSlug}
@@ -268,7 +268,7 @@ function LiveLeaderboardContent() {
 
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Link
-                          href={`/live-lineup?contestId=${contest.id}&userId=${encodeURIComponent(row.userSlug)}`}
+                          href={`/live-lineup?contestId=${contest.id}&userId=${encodeURIComponent(row.userSlug)}&viewerId=${encodeURIComponent(viewerUserId)}`}
                           className="inline-flex items-center rounded-md border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-zinc-200 hover:bg-white/10"
                         >
                           <Radio className="mr-1.5 h-3.5 w-3.5" />
