@@ -174,7 +174,7 @@ if gcloud scheduler jobs describe "${SCHEDULER_JOB_NAME}" --location "${SCHEDULE
     --http-method POST \
     --oauth-service-account-email "${SCHEDULER_SA_EMAIL}" \
     --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" \
-    --headers "Content-Type=application/json" \
+    --update-headers "Content-Type=application/json" \
     --message-body '{}'
 else
   gcloud scheduler jobs create http "${SCHEDULER_JOB_NAME}" \
