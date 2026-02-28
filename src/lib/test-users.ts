@@ -20,6 +20,10 @@ export const TEST_USERS: TestUserOption[] = [
   { id: 'tomlinsonj15', name: 'tomlinsonj15' },
   { id: 'jpetruney', name: 'jpetruney' },
   { id: 'bscire', name: 'bscire' },
+  { id: 'jake', name: 'Jake' },
+  { id: 'eions', name: 'eions' },
+  { id: 'unccle-neal', name: 'unccle neal' },
+  { id: 'finsmaniac', name: 'finsmaniac' },
 ];
 
 export const TEST_USER_NAME_BY_ID = Object.fromEntries(

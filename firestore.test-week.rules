@@ -19,7 +19,11 @@ service cloud.firestore {
         'samthemaam5',
         'tomlinsonj15',
         'jpetruney',
-        'bscire'
+        'bscire',
+        'jake',
+        'eions',
+        'unccle-neal',
+        'finsmaniac'
       ];
     }
 
