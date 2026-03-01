@@ -1,0 +1,32 @@
+[
+  { "id": 1, "name": "Cognizant Classic", "tier": "Standard", "quarter": 1, "isQuarterFinale": false },
+  { "id": 2, "name": "Arnold Palmer Invitational", "tier": "Signature", "quarter": 1, "isQuarterFinale": false },
+  { "id": 3, "name": "THE PLAYERS Championship", "tier": "Signature", "quarter": 1, "isQuarterFinale": false },
+  { "id": 4, "name": "Valspar Championship", "tier": "Standard", "quarter": 1, "isQuarterFinale": false },
+  { "id": 5, "name": "Houston Open", "tier": "Standard", "quarter": 1, "isQuarterFinale": false },
+  { "id": 6, "name": "Valero Texas Open", "tier": "Standard", "quarter": 1, "isQuarterFinale": false },
+  { "id": 7, "name": "The Masters", "tier": "Major", "quarter": 1, "isQuarterFinale": true },
+  
+  { "id": 8, "name": "RBC Heritage", "tier": "Signature", "quarter": 2, "isQuarterFinale": false },
+  { "id": 9, "name": "Zurich Classic", "tier": "Standard", "quarter": 2, "isQuarterFinale": false },
+  { "id": 10, "name": "Miami Championship", "tier": "Signature", "quarter": 2, "isQuarterFinale": false },
+  { "id": 11, "name": "Truist Championship", "tier": "Signature", "quarter": 2, "isQuarterFinale": false },
+  { "id": 12, "name": "PGA Championship", "tier": "Major", "quarter": 2, "isQuarterFinale": true },
+  
+  { "id": 13, "name": "CJ Cup Byron Nelson", "tier": "Standard", "quarter": 3, "isQuarterFinale": false },
+  { "id": 14, "name": "Charles Schwab Challenge", "tier": "Standard", "quarter": 3, "isQuarterFinale": false },
+  { "id": 15, "name": "The Memorial Tournament", "tier": "Signature", "quarter": 3, "isQuarterFinale": false },
+  { "id": 16, "name": "RBC Canadian Open", "tier": "Standard", "quarter": 3, "isQuarterFinale": false },
+  { "id": 17, "name": "U.S. Open", "tier": "Major", "quarter": 3, "isQuarterFinale": false },
+  { "id": 18, "name": "Travelers Championship", "tier": "Signature", "quarter": 3, "isQuarterFinale": true },
+  
+  { "id": 19, "name": "John Deere Classic", "tier": "Standard", "quarter": 4, "isQuarterFinale": false },
+  { "id": 20, "name": "Genesis Scottish Open", "tier": "Standard", "quarter": 4, "isQuarterFinale": false },
+  { "id": 21, "name": "The Open Championship", "tier": "Major", "quarter": 4, "isQuarterFinale": false },
+  { "id": 22, "name": "3M Open", "tier": "Standard", "quarter": 4, "isQuarterFinale": false },
+  { "id": 23, "name": "Rocket Mortgage Classic", "tier": "Standard", "quarter": 4, "isQuarterFinale": false },
+  { "id": 24, "name": "Wyndham Championship", "tier": "Standard", "quarter": 4, "isQuarterFinale": false },
+  { "id": 25, "name": "FedEx St. Jude Championship", "tier": "Signature", "quarter": 4, "isQuarterFinale": false },
+  { "id": 26, "name": "BMW Championship", "tier": "Signature", "quarter": 4, "isQuarterFinale": false },
+  { "id": 27, "name": "Tour Championship", "tier": "Major", "quarter": 4, "isQuarterFinale": true }
+]

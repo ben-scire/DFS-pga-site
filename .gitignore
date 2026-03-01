@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -23,6 +24,9 @@
 # misc
 .DS_Store
 *.pem
+.pycache/
+__pycache__/
+*.py[cod]
 
 # debug
 npm-debug.log*
@@ -42,5 +46,14 @@ next-env.d.ts
 !.env.example
 
 # firebase
+firebase.config
 firebase-debug.log
 firestore-debug.log
+
+# local accidental nested repo copy
+DFS-pga-site/
+
+# Nick UI app (track source, ignore generated artifacts)
+nick-ui/node_modules/
+nick-ui/dist/
+nick-ui/tsconfig.tsbuildinfo
