@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -62,11 +63,11 @@ export default function LoginPage() {
           <Button onClick={handleLogin} disabled={!selectedUserId} className="w-full">
             <Users className="mr-2 h-4 w-4" /> Open 5x5
           </Button>
-          <a href="league/" className="w-full">
-            <Button variant="outline" className="w-full">
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/season">
               <Trophy className="mr-2 h-4 w-4" /> League Standings
-            </Button>
-          </a>
+            </Link>
+          </Button>
         </CardFooter>
       </Card>
     </div>

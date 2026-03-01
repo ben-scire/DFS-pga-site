@@ -26,8 +26,12 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 
-CHAMPIONSHIP_POINTS_TOP_10 = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
-MAJOR_MULTIPLIER = 2
+# League finish points matrix (per your scoring sheet).
+CHAMPIONSHIP_POINTS_BY_TIER = {
+    "Standard": [30, 24, 20, 17, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1, 1],
+    "Signature": [40, 32, 26, 22, 18, 15, 13, 11, 9, 8, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1],
+    "Major": [50, 40, 33, 27, 22, 18, 15, 13, 11, 10, 8, 7, 6, 5, 4, 3, 2, 2, 1, 1],
+}
 
 WEEKLY_FEE = 10
 FIRST_WEEK_OF_QUARTER_FEE = 60
@@ -213,7 +217,6 @@ def compute_standings(schedule: List[ScheduleEvent], weekly_data: List[Tuple[int
     for event_id, weekly in weekly_data:
         event = event_by_id.get(event_id)
         tier = event.tier if event else "Standard"
-        multiplier = MAJOR_MULTIPLIER if tier == "Major" else 1
         entries = weekly.get("entries", [])
         ranked = rank_entries(entries)
 
@@ -234,8 +237,9 @@ def compute_standings(schedule: List[ScheduleEvent], weekly_data: List[Tuple[int
             rec["fees"] += fee_per_user
 
             rnk = row["rank"]
-            base = CHAMPIONSHIP_POINTS_TOP_10[rnk - 1] if 1 <= rnk <= len(CHAMPIONSHIP_POINTS_TOP_10) else 0
-            rec["championshipPoints"] += base * multiplier
+            points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
+            base = points_table[rnk - 1] if 1 <= rnk <= len(points_table) else 0
+            rec["championshipPoints"] += base
             if rnk == 1:
                 rec["weeklyWins"] += 1
             if i < payout_places:
@@ -263,13 +267,13 @@ def compute_standings(schedule: List[ScheduleEvent], weekly_data: List[Tuple[int
         for eid, weekly in quarter_events:
             event = event_by_id.get(eid)
             tier = event.tier if event else "Standard"
-            multiplier = MAJOR_MULTIPLIER if tier == "Major" else 1
             ranked = rank_entries(weekly.get("entries", []))
             active_players = max(active_players, len(weekly.get("entries", [])))
             for row in ranked:
                 rnk = row["rank"]
-                base = CHAMPIONSHIP_POINTS_TOP_10[rnk - 1] if 1 <= rnk <= len(CHAMPIONSHIP_POINTS_TOP_10) else 0
-                quarter_points[row["entryId"]] += base * multiplier
+                points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
+                base = points_table[rnk - 1] if 1 <= rnk <= len(points_table) else 0
+                quarter_points[row["entryId"]] += base
 
         quarter_sorted = sorted(quarter_points.items(), key=lambda it: it[1], reverse=True)
         quarterly_pot = active_players * 50
@@ -360,4 +364,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

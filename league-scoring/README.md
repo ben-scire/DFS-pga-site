@@ -54,13 +54,16 @@ The only required input is **weekly scores** (fantasy points per entrant per eve
 1. **Weekly results** — One file per event in `weekly-scores/`: `eventId`, `eventName`, and `entries[]` with `entryId`, `entryName`, `weeklyFantasyPoints`.
 2. **Schedule** — `schedule.json` maps event id → tier (Standard/Signature/Major) and quarter for payout rules and major multiplier.
 3. **Payout rules** — Above (weekly pot, skim, top 4/5; quarterly pot, top 5). Net $ = winnings minus $10 per week and $50 per quarter paid in.
-4. **Championship points** — Rank by `weeklyFantasyPoints` each week; award top 10 (25, 18, 15, 12, 10, 8, 6, 4, 2, 1); apply major multiplier for majors. Sum for season.
+4. **Championship points** — Rank by `weeklyFantasyPoints` each week and apply the league finish-points matrix:
+   - Major (2.5x): `50,40,33,27,22,18,15,13,11,10,8,7,6,5,4,3,2,2,1,1`
+   - Signature (2x): `40,32,26,22,18,15,13,11,9,8,6,5,4,3,2,2,1,1,1,1`
+   - Standard (1.5x): `30,24,20,17,14,12,10,8,7,6,5,4,3,2,2,1,1,1,1,1`
 
 ## Data files
 
 | File | Purpose |
 |------|---------|
-| `standings-template.json` | Mock standings (output shape). Use as template for the full table. All `netDollars` are -60 (everyone has paid $50 quarter + $10 week; no winnings yet). |
+| `standings-template.json` | Current computed standings output (rank, points, net dollars, and weekly aggregates). |
 | `weekly-scores/*.json` | One JSON file per event (input). Each file has `eventId`, `eventName`, and `entries[]` with `entryId`, `entryName`, `weeklyFantasyPoints`. |
 
 Events and tiers are defined in `schedule.json`.
