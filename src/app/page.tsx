@@ -9,8 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Logo } from '@/components/logo';
 import { Users, Trophy } from 'lucide-react';
-import type { Player } from '@/lib/types';
-import { Users } from 'lucide-react';
 import { TEST_USERS } from '@/lib/test-users';
 
 export default function LoginPage() {
@@ -61,9 +59,6 @@ export default function LoginPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
-          <Button onClick={handleLogin} disabled={!selectedUserId || loadingPlayers} className="w-full">
-            <Users className="mr-2 h-4 w-4" /> View Leaderboard
-        <CardFooter>
           <Button onClick={handleLogin} disabled={!selectedUserId} className="w-full">
             <Users className="mr-2 h-4 w-4" /> Open 5x5
           </Button>

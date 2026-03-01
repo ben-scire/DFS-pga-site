@@ -30,10 +30,10 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci
 
-      - name: Build static export
+      - name: Build main site
         run: npm run build:pages
         env:
           NEXT_PUBLIC_DFS_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_DFS_API_BASE_URL }}
@@ -50,6 +50,27 @@ jobs:
           NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+
+      - name: Install nick-ui dependencies
+        run: npm ci
+        working-directory: nick-ui
+
+      - name: Generate league data files
+        run: node build-data.js --out-dir public/data
+        working-directory: nick-ui
+
+      - name: Build nick-ui
+        run: npx vite build
+        working-directory: nick-ui
+        env:
+          GITHUB_ACTIONS: 'true'
+
+      - name: Merge nick-ui into main output
+        run: |
+          mkdir -p out/league
+          cp -r nick-ui/dist/* out/league/
+          mkdir -p out/league/data
+          cp nick-ui/public/data/*.json out/league/data/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
