@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -23,6 +24,9 @@
 # misc
 .DS_Store
 *.pem
+.pycache/
+__pycache__/
+*.py[cod]
 
 # debug
 npm-debug.log*
@@ -45,3 +49,9 @@ next-env.d.ts
 firebase.config
 firebase-debug.log
 firestore-debug.log
+
+# local accidental nested repo copy
+DFS-pga-site/
+
+# legacy local UI sandbox (not part of deploy workflows)
+nick-ui/
