@@ -34,26 +34,12 @@ const GOLFERS: Golfer[] = [
 ];
 
 const PLAYERS: Omit<Player, 'lineup' | 'prize' | 'phr'>[] = [
-  { id: 1, name: "Alice" },
-  { id: 2, name: "Bob" },
-  { id: 3, name: "Charlie" },
-  { id: 4, name: "David" },
-  { id: 5, name: "Eve" },
-  { id: 6, name: "Frank" },
-  { id: 7, name: "Grace" },
-  { id: 8, name: "Heidi" },
-  { id: 9, name: "Ivan" },
-  { id: 10, name: "Judy" },
-  { id: 11, name: "Mallory" },
-  { id: 12, name: "Niaj" },
-  { id: 13, name: "Olivia" },
-  { id: 14, name: "Peggy" },
-  { id: 15, name: "Quentin" },
-  { id: 16, name: "Rupert" },
-  { id: 17, name: "Sybil" },
-  { id: 18, name: "Trent" },
-  { id: 19, name: "Umar" },
-  { id: 20, name: "Victor" },
+  { id: 1, name: "Ben" },
+  { id: 2, name: "Dylan" },
+  { id: 3, name: "Sam L" },
+  { id: 4, name: "Jake" },
+  { id: 5, name: "Nick" },
+  { id: 6, name: "Hank" },
 ];
 
 // Function to generate a random lineup for a player

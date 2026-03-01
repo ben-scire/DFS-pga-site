@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card';
 import type { LeaderboardPlayer } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Avatar, AvatarFallback } from '../ui/avatar';
 import PhrIndicator from './phr-indicator';
 
 interface LeaderboardProps {
@@ -37,7 +37,6 @@ export default function Leaderboard({ players, onSelectPlayer, selectedPlayerId 
             <div className="w-7 text-center text-3xl font-extrabold leading-none text-zinc-800">{player.rank}</div>
             <div className="flex flex-1 items-center gap-3">
               <Avatar className="h-12 w-12 border border-zinc-300">
-                <AvatarImage src={`https://i.pravatar.cc/150?u=${player.id}`} alt={player.name} />
                 <AvatarFallback>{getInitials(player.name)}</AvatarFallback>
               </Avatar>
               <div>

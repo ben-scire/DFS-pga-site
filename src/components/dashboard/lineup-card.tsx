@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import Image from "next/image";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { LeaderboardPlayer } from "@/lib/types";
 import PhrIndicator from "./phr-indicator";
@@ -64,7 +64,6 @@ export default function LineupCard({ player }: LineupCardProps) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar className="h-12 w-12 border border-zinc-300">
-              <AvatarImage src={`https://i.pravatar.cc/150?u=${player.id}`} alt={player.name} />
               <AvatarFallback>{getInitials(player.name)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">

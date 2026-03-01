@@ -48,6 +48,13 @@ All runtime config is client-visible (`NEXT_PUBLIC_*`) because this app is stati
 - `NEXT_PUBLIC_DFS_REFRESH_MS`: Poll interval in milliseconds, default `60000`
 - `NEXT_PUBLIC_USE_MOCK_FALLBACK`: `true/false`; if true, mock data is used when live config/fetch fails
 
+Additional local/admin script env vars:
+- `DATAGOLF_LIVE_URL`: Full Data Golf live endpoint URL for polling (supports `{key}` placeholder)
+- `DATAGOLF_API_KEY`: Optional API key substituted into `DATAGOLF_LIVE_URL`
+- `DATAGOLF_POLL_INTERVAL_MS`: Poll interval for Data Golf sync script (default `30000`)
+- `DATAGOLF_SCORING_MODE`: `dfs-rules`, `hybrid`, or `upstream` (default `dfs-rules`)
+- `FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`: Required for server-side writes to `test_scores`
+
 ## DFS API Response Contract
 
 The app normalizes several common response shapes. Preferred payload:
@@ -99,6 +106,88 @@ For true live push updates, expose an SSE endpoint and set `NEXT_PUBLIC_DFS_STRE
   - Wrapped: `{ "contestData": { "golfers": [...], "players": [...] } }`
 - When SSE is connected, the dashboard uses stream updates and polling becomes fallback only.
 - On disconnect, the app retries SSE every 5 seconds.
+
+## Weekly Contest Ops (CSV + Data Golf)
+
+### 1. Import DraftKings standings CSV into test users (`test_lineups`)
+
+This populates the approved test-user lineup docs from a DK contest standings export (the CSV with `Rank,EntryId,EntryName,...`).
+
+Dry run:
+
+```bash
+npm run import:standings -- --csv /absolute/path/to/contest-standings.csv
+```
+
+Write to Firestore:
+
+```bash
+npm run import:standings -- --csv /absolute/path/to/contest-standings.csv --write
+```
+
+If DK entry names do not match your test-user slugs, add overrides:
+
+```bash
+npm run import:standings -- --csv /absolute/path/to/contest-standings.csv --map cm30=coach --map capc=ceec --write
+```
+
+Notes:
+- This writes `test_lineups/{contestId}/entries/{userSlug}`.
+- It uses the seeded contest player pool to convert lineup names into `lineupGolferIds`.
+- By default it runs in dry-run mode and prints unresolved entries.
+
+### 2. Poll Data Golf and write live golfer stats (`test_scores`)
+
+The live lineup page already reads Firestore `test_scores`. This script fills those docs by polling a Data Golf endpoint and matching golfers by name.
+
+Dry run (no Firestore writes):
+
+```bash
+npm run sync:datagolf:scores -- --once --dry-run --url "https://feeds.datagolf.com/preds/live-hole-scores?tour=pga&file_format=json&key={key}"
+```
+
+Continuous polling (writes Firestore, requires Admin credentials):
+
+```bash
+npm run sync:datagolf:scores
+```
+
+Notes:
+- Supports JSON or CSV responses and normalizes common field names (`player_name`, `position`, `thru`, `score_to_par`, etc.).
+- For true per-player DFS scoring, use Data Golf `preds/live-hole-scores` (not `preds/live-hole-stats`, which is wave-level aggregate data).
+- Computes fantasy points from DFS PGA scoring rules in `dfs-rules` mode:
+  - Double Eagle `+20`, Eagle `+8`, Birdie `+3`, Par `+0.5`, Bogey `-0.5`, Double Bogey or Worse `-1`
+  - Hole in One `+10`, 3-Birdie Streak `+3`, Bogey-Free Round `+3`, All Rounds Under 70 `+5`
+  - Finishing position points: `1st=30`, `2nd=20`, `3rd=18`, `4th=16`, `5th=14`, `6th=12`, `7th=10`, `8th=9`, `9th=8`, `10th=7`, `11-15=6`, `16-20=5`, `21-25=4`, `26-30=3`, `31-40=2`, `41-50=1`
+- Writes to `test_scores/{contestId}/golfers/{golferId}` with `updatedAt` server timestamps.
+- `fantasyPoints` source is controlled by `DATAGOLF_SCORING_MODE`:
+  - `dfs-rules`: strict computed scoring only
+  - `hybrid`: computed scoring first, fallback to upstream points
+  - `upstream`: trust upstream points directly
+
+### 3. Production sync for deployed site (Cloud Run Job + Scheduler)
+
+The deployed static site updates live by listening to Firestore. To keep Firestore fresh, run the sync worker on Google Cloud:
+
+```bash
+cd /Users/vinci/dev-playground/studio
+export DATAGOLF_API_KEY="your-datagolf-key"
+export PROJECT_ID="studio-5115982885-551c8"
+export REGION="us-central1"
+./scripts/deploy-datagolf-sync-cloud-run.sh
+```
+
+What this sets up:
+- Builds `Dockerfile.datagolf-sync` and pushes image to Artifact Registry
+- Deploys Cloud Run Job `datagolf-live-sync` (runs one sync pass)
+- Stores API key in Secret Manager (`datagolf-api-key`)
+- Creates Cloud Scheduler job `datagolf-live-sync-every-minute` to trigger job every minute
+
+You can override defaults with env vars before running the script:
+- `TOUR` (default `pga`)
+- `SCORING_MODE` (default `dfs-rules`)
+- `TIME_ZONE` (default `America/New_York`)
+- `DATAGOLF_LIVE_URL` (default uses `preds/live-hole-scores`)
 
 ## Project Structure
 
