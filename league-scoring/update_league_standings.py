@@ -98,6 +98,12 @@ def init_firestore_client():
 
     raw_json = (os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON") or "").strip()
     project = (os.environ.get("GOOGLE_CLOUD_PROJECT") or "").strip() or None
+    emulator_host = (os.environ.get("FIRESTORE_EMULATOR_HOST") or "").strip()
+
+    # Emulator mode: do not require service account credentials.
+    if emulator_host:
+        return Client(project=project or "demo-local")
+
     if raw_json:
         info = json.loads(raw_json)
         credentials = service_account.Credentials.from_service_account_info(info)
