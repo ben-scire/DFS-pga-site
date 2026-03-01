@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Logo } from '@/components/logo';
-import { Users } from 'lucide-react';
+import { Users, Trophy } from 'lucide-react';
 import { TEST_USERS } from '@/lib/test-users';
 
 export default function LoginPage() {
@@ -58,9 +59,14 @@ export default function LoginPage() {
             </div>
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-2">
           <Button onClick={handleLogin} disabled={!selectedUserId} className="w-full">
             <Users className="mr-2 h-4 w-4" /> Open 5x5
+          </Button>
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/season">
+              <Trophy className="mr-2 h-4 w-4" /> League Standings
+            </Link>
           </Button>
         </CardFooter>
       </Card>
