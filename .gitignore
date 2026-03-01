@@ -53,5 +53,7 @@ firestore-debug.log
 # local accidental nested repo copy
 DFS-pga-site/
 
-# legacy local UI sandbox (not part of deploy workflows)
-nick-ui/
+# Nick UI app (track source, ignore generated artifacts)
+nick-ui/node_modules/
+nick-ui/dist/
+nick-ui/tsconfig.tsbuildinfo
