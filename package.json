@@ -61,6 +61,8 @@
     "@types/node": "^20",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.5.9",
     "firebase-admin": "^13.7.0",
     "genkit-cli": "^1.28.0",
     "postcss": "^8",
