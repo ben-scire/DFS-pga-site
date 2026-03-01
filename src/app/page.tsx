@@ -10,7 +10,7 @@ import { getContestData } from '@/lib/dfs-api';
 import { initialContestData } from '@/lib/mock-data';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Logo } from '@/components/logo';
-import { Users } from 'lucide-react';
+import { Users, Trophy } from 'lucide-react';
 import type { Player } from '@/lib/types';
 
 export default function LoginPage() {
@@ -91,10 +91,15 @@ export default function LoginPage() {
             </div>
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-2">
           <Button onClick={handleLogin} disabled={!selectedUserId || loadingPlayers} className="w-full">
             <Users className="mr-2 h-4 w-4" /> View Leaderboard
           </Button>
+          <a href="league/" className="w-full">
+            <Button variant="outline" className="w-full">
+              <Trophy className="mr-2 h-4 w-4" /> League Standings
+            </Button>
+          </a>
         </CardFooter>
       </Card>
     </div>
