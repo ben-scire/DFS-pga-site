@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Radio, RefreshCcw, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,9 @@ import {
   subscribeToTestLineup,
 } from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
-import type { PersistedLineupEntry, PlayerPoolGolfer } from '@/lib/lineup-builder-types';
+import type { PersistedLineupEntry, PlayerPoolGolfer, WeeklyLeagueContest } from '@/lib/lineup-builder-types';
 import { getTestUserName } from '@/lib/test-users';
-import { getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
+import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool, loadPersistedLineup, savePersistedLineup } from '@/lib/weekly-lineup-storage';
 
 function formatToPar(value: string | number | undefined): string {
@@ -39,13 +39,50 @@ function formatPosition(value: string | undefined): string {
   return value.trim().toUpperCase();
 }
 
+function getContestLabel(contestId: string) {
+  const contest = getWeeklyContestById(contestId);
+  if (contest) return contest.name;
+
+  const match = contestId.match(/^week-(\d+)-(.+)$/i);
+  if (!match) return contestId;
+  const week = Number(match[1]);
+  const name = match[2].replace(/-/g, ' ');
+  const title = name.replace(/\b\w/g, (char) => char.toUpperCase());
+  return `Week ${week} ${title}`;
+}
+
+function getFallbackContest(contestId: string): WeeklyLeagueContest {
+  const weekMatch = contestId.match(/^week-(\d+)-/i);
+  const weekNumber = weekMatch ? Number(weekMatch[1]) : 0;
+  return {
+    id: contestId,
+    weekNumber,
+    name: getContestLabel(contestId),
+    hostLabel: 'unknown host',
+    entryFeeDisplay: '$0',
+    lockAtIso: '2026-01-01T00:00:00.000Z',
+    status: 'live',
+    salaryCap: 50000,
+    rosterSize: 6,
+    entryNumberLabel: '--/--',
+    testMode: true,
+    lockDisabled: true,
+  };
+}
+
 function LiveLineupContent() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const contestId = searchParams.get('contestId') ?? 'week-1-cognizant';
   const lineupUserId = searchParams.get('userId') ?? 'guest';
   const viewerUserId = searchParams.get('viewerId')?.trim() || lineupUserId;
 
-  const contest = getWeeklyContestById(contestId);
+  const contest = getWeeklyContestById(contestId) ?? getFallbackContest(contestId);
+  const contestOptions = useMemo(() => {
+    const ids = [contestId, ...WEEKLY_CONTESTS.map((item) => item.id)];
+    return Array.from(new Set(ids)).map((id) => ({ id, label: getContestLabel(id) }));
+  }, [contestId]);
   const lineupUserName = getTestUserName(lineupUserId) ?? lineupUserId;
   const isValidUser = Boolean(getTestUserName(lineupUserId));
 
@@ -56,11 +93,10 @@ function LiveLineupContent() {
   const [scoreStatus, setScoreStatus] = useState<'checking' | 'live' | 'no-feed' | 'error'>('checking');
 
   useEffect(() => {
-    if (!contest) return;
-    const imported = loadImportedPlayerPool(contest.id);
-    setPlayerPool(imported && imported.length ? imported : getDefaultPlayerPool(contest.id));
+    const imported = loadImportedPlayerPool(contestId);
+    setPlayerPool(imported && imported.length ? imported : getDefaultPlayerPool(contestId));
 
-    const local = loadPersistedLineup(contest.id, lineupUserId);
+    const local = loadPersistedLineup(contestId, lineupUserId);
     setEntry(local);
 
     if (!isValidUser || !isFirestoreLineupStorageAvailable()) {
@@ -71,7 +107,7 @@ function LiveLineupContent() {
     let cancelled = false;
     void (async () => {
       try {
-        const cloudEntry = await loadTestLineup(contest.id, lineupUserId);
+        const cloudEntry = await loadTestLineup(contestId, lineupUserId);
         if (cancelled) return;
         if (cloudEntry) {
           setEntry(cloudEntry);
@@ -84,7 +120,7 @@ function LiveLineupContent() {
     })();
 
     const unsubscribe = subscribeToTestLineup(
-      contest.id,
+      contestId,
       lineupUserId,
       (nextEntry) => {
         if (cancelled) return;
@@ -103,10 +139,9 @@ function LiveLineupContent() {
       cancelled = true;
       unsubscribe();
     };
-  }, [contest, isValidUser, lineupUserId]);
+  }, [contestId, isValidUser, lineupUserId]);
 
   useEffect(() => {
-    if (!contest) return;
     if (!isFirestoreLineupStorageAvailable()) {
       setScoreStatus('no-feed');
       return;
@@ -114,7 +149,7 @@ function LiveLineupContent() {
 
     let cancelled = false;
     const unsubscribe = subscribeToTestGolferScores(
-      contest.id,
+      contestId,
       (scoresByGolferId) => {
         if (cancelled) return;
         setLiveScores(scoresByGolferId);
@@ -129,7 +164,7 @@ function LiveLineupContent() {
       cancelled = true;
       unsubscribe();
     };
-  }, [contest]);
+  }, [contestId]);
 
   const lineupGolfers = useMemo(() => {
     if (!entry) return [];
@@ -163,7 +198,7 @@ function LiveLineupContent() {
     };
   }, [lineupGolfers, liveScores]);
 
-  if (!contest || !validation) {
+  if (!validation) {
     return <div className="min-h-screen bg-[#080c13] text-zinc-100" />;
   }
 
@@ -191,22 +226,45 @@ function LiveLineupContent() {
               <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-100 sm:text-3xl">Live Lineup View</h1>
               <p className="mt-2 text-sm text-zinc-400">{contest.name} · {lineupUserName}</p>
             </div>
-            <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
-              <Button asChild variant="outline" className="border-cyan-300/25 bg-white/[0.03] text-zinc-100 hover:bg-white/10">
-                <Link href={`/contests?userId=${encodeURIComponent(viewerUserId)}`}>
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                </Link>
-              </Button>
-              <Button asChild className="bg-cyan-500 text-[#061420] hover:bg-cyan-400">
-                <Link href={`/lineup?contestId=${contest.id}&userId=${encodeURIComponent(viewerUserId)}&viewerId=${encodeURIComponent(viewerUserId)}`}>
-                  <RefreshCcw className="mr-2 h-4 w-4" /> Lineup
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="border-cyan-300/25 bg-white/[0.03] text-zinc-100 hover:bg-white/10">
-                <Link href={`/live-leaderboard?contestId=${contest.id}&userId=${encodeURIComponent(viewerUserId)}`}>
-                  <TrendingUp className="mr-2 h-4 w-4" /> Board
-                </Link>
-              </Button>
+            <div className="space-y-2 sm:w-auto">
+              <label className="inline-flex w-full items-center rounded-md border border-cyan-300/25 bg-white/[0.03] px-2 text-sm text-zinc-200 sm:w-auto">
+                <span className="mr-2 text-[11px] uppercase tracking-[0.18em] text-zinc-500">Contest</span>
+                <select
+                  value={contestId}
+                  onChange={(event) => {
+                    const nextContestId = event.target.value;
+                    const next = new URLSearchParams(searchParams.toString());
+                    next.set('contestId', nextContestId);
+                    next.set('userId', lineupUserId);
+                    next.set('viewerId', viewerUserId);
+                    router.push(`${pathname}?${next.toString()}`);
+                  }}
+                  className="bg-transparent py-2 text-sm text-zinc-100 outline-none"
+                >
+                  {contestOptions.map((option) => (
+                    <option key={option.id} value={option.id} className="bg-[#0d1420]">
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
+                <Button asChild variant="outline" className="border-cyan-300/25 bg-white/[0.03] text-zinc-100 hover:bg-white/10">
+                  <Link href={`/contests?userId=${encodeURIComponent(viewerUserId)}`}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Link>
+                </Button>
+                <Button asChild className="bg-cyan-500 text-[#061420] hover:bg-cyan-400">
+                  <Link href={`/lineup?contestId=${contestId}&userId=${encodeURIComponent(viewerUserId)}&viewerId=${encodeURIComponent(viewerUserId)}`}>
+                    <RefreshCcw className="mr-2 h-4 w-4" /> Lineup
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="border-cyan-300/25 bg-white/[0.03] text-zinc-100 hover:bg-white/10">
+                  <Link href={`/live-leaderboard?contestId=${contestId}&userId=${encodeURIComponent(viewerUserId)}`}>
+                    <TrendingUp className="mr-2 h-4 w-4" /> Board
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
         </header>

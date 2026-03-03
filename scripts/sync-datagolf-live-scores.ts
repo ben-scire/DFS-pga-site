@@ -619,9 +619,9 @@ function resolveFantasyPoints(
       : computeFantasyPointsFromDfsRules(row.rawRow);
   const rulesWithLivePosition =
     typeof fromRules === 'number'
-      ? roundToTenth(fromRules + livePositionPoints)
+      ? roundToHalf(fromRules + livePositionPoints)
       : livePositionPoints > 0
-        ? roundToTenth(livePositionPoints)
+        ? roundToHalf(livePositionPoints)
         : undefined;
 
   if (scoringMode === 'dfs-rules') {
@@ -631,7 +631,7 @@ function resolveFantasyPoints(
 
   if (scoringMode === 'upstream') {
     if (typeof row.upstreamFantasyPoints === 'number') {
-      return { value: roundToTenth(row.upstreamFantasyPoints), source: 'upstream' };
+      return { value: roundToHundredth(row.upstreamFantasyPoints), source: 'upstream' };
     }
     return { source: 'none' };
   }
@@ -640,7 +640,7 @@ function resolveFantasyPoints(
     return { value: rulesWithLivePosition, source: 'dfs-rules' };
   }
   if (typeof row.upstreamFantasyPoints === 'number') {
-    return { value: roundToTenth(row.upstreamFantasyPoints), source: 'upstream' };
+    return { value: roundToHundredth(row.upstreamFantasyPoints), source: 'upstream' };
   }
   return { source: 'none' };
 }
@@ -671,13 +671,14 @@ function computeFantasyPointsFromDfsRules(sourceRow: GenericRow): number | undef
   const doubleBogeyOrWorse = explicitDoubleOrWorse ?? doubles + triples;
 
   const holeInOnes = readCount(sourceRow, ['hole_in_ones', 'hole_in_one', 'aces', 'ace']);
-  const threeBirdieStreaks = readCount(sourceRow, [
+  const threeBirdieStreaksRaw = readCount(sourceRow, [
     'streak_3_birdies',
     'three_birdie_streaks',
     'streaks_of_3_birdies',
     'birdie_streaks',
   ]);
-  const bogeyFreeRounds = readCount(sourceRow, ['bogey_free_rounds', 'bogey_free_round']);
+  const threeBirdieStreaks = Math.min(4, threeBirdieStreaksRaw);
+  const bogeyFreeRounds = Math.min(4, readCount(sourceRow, ['bogey_free_rounds', 'bogey_free_round']));
   const allRoundsUnder70 = readCount(sourceRow, ['all_rounds_under_70']) || asFlagCount(readUnknown(sourceRow, ['all_rounds_under_70']));
 
   const hasAnyScoringInputs =
@@ -698,18 +699,18 @@ function computeFantasyPointsFromDfsRules(sourceRow: GenericRow): number | undef
   }
 
   const total =
-    doubleEagles * 20 +
+    doubleEagles * 13 +
     eagles * 8 +
     birdies * 3 +
     pars * 0.5 +
     bogeys * -0.5 +
     doubleBogeyOrWorse * -1 +
-    holeInOnes * 10 +
+    holeInOnes * 5 +
     threeBirdieStreaks * 3 +
     bogeyFreeRounds * 3 +
     allRoundsUnder70 * 5;
 
-  return roundToTenth(total);
+  return roundToHalf(total);
 }
 
 function parseFinishingPosition(position: string): number | null {
@@ -745,32 +746,12 @@ function getFinishingPoints(position: number): number {
 }
 
 function applyLivePositionPoints(rows: NormalizedLiveRow[]): NormalizedLiveRow[] {
-  const indexesByPosition = new Map<number, number[]>();
-
-  for (let index = 0; index < rows.length; index += 1) {
-    const parsed = parseFinishingPosition(rows[index].position ?? '');
-    if (!parsed) continue;
-    const list = indexesByPosition.get(parsed) ?? [];
-    list.push(index);
-    indexesByPosition.set(parsed, list);
-  }
-
-  const pointsByIndex = new Map<number, number>();
-  for (const [position, indexes] of indexesByPosition.entries()) {
-    const count = indexes.length;
-    const totalPoints = Array.from({ length: count }, (_, offset) => getFinishingPoints(position + offset)).reduce(
-      (sum, value) => sum + value,
-      0
-    );
-    const perPlayerPoints = count > 0 ? totalPoints / count : 0;
-    for (const index of indexes) {
-      pointsByIndex.set(index, roundToTenth(perPlayerPoints));
-    }
-  }
-
-  return rows.map((row, index) => ({
+  return rows.map((row) => ({
     ...row,
-    livePositionPoints: pointsByIndex.get(index) ?? 0,
+    livePositionPoints: (() => {
+      const parsed = parseFinishingPosition(row.position ?? '');
+      return parsed ? getFinishingPoints(parsed) : 0;
+    })(),
   }));
 }
 
@@ -899,13 +880,13 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
   const allRoundsUnder70 = completedRounds >= 4 && completedRoundsUnder70 === completedRounds ? 1 : 0;
 
   const fantasy =
-    doubleEagles * 20 +
+    doubleEagles * 13 +
     eagles * 8 +
     birdies * 3 +
     pars * 0.5 +
     bogeys * -0.5 +
     doubleOrWorse * -1 +
-    holeInOnes * 10 +
+    holeInOnes * 5 +
     threeBirdieStreaks * 3 +
     bogeyFreeRounds * 3 +
     allRoundsUnder70 * 5;
@@ -914,7 +895,7 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
   const status = completedHolesTotal === 0 ? 'upcoming' : activeRoundHoles >= 18 ? 'round-complete' : 'live';
 
   return {
-    fantasyPoints: roundToTenth(fantasy),
+    fantasyPoints: roundToHalf(fantasy),
     scoreToPar: totalToPar,
     today: activeRoundToPar,
     thru,
@@ -1086,8 +1067,12 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function roundToTenth(value: number): number {
-  return Math.round(value * 10) / 10;
+function roundToHundredth(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function roundToHalf(value: number): number {
+  return Math.round(value * 2) / 2;
 }
 
 function redactUrl(url: string): string {

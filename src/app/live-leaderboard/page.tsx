@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Radio, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
 } from '@/lib/firestore-lineups';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
 import { getTestUserName, TEST_USERS } from '@/lib/test-users';
-import { getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
+import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool } from '@/lib/weekly-lineup-storage';
 
 interface LeaderboardRow {
@@ -33,13 +33,32 @@ interface LeaderboardLineupEntry {
   lineupGolferIds: string[];
 }
 
+function getContestLabel(contestId: string) {
+  const contest = getWeeklyContestById(contestId);
+  if (contest) return contest.name;
+
+  const match = contestId.match(/^week-(\d+)-(.+)$/i);
+  if (!match) return contestId;
+  const week = Number(match[1]);
+  const name = match[2].replace(/-/g, ' ');
+  const title = name.replace(/\b\w/g, (char) => char.toUpperCase());
+  return `Week ${week} ${title}`;
+}
+
 function LiveLeaderboardContent() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const contestId = searchParams.get('contestId') ?? 'week-1-cognizant';
   const viewerUserId = searchParams.get('userId')?.trim() || 'guest';
 
   const contest = getWeeklyContestById(contestId);
+  const contestName = contest?.name ?? getContestLabel(contestId);
   const viewerUserName = getTestUserName(viewerUserId) ?? viewerUserId;
+  const contestOptions = useMemo(() => {
+    const ids = [contestId, ...WEEKLY_CONTESTS.map((item) => item.id)];
+    return Array.from(new Set(ids)).map((id) => ({ id, label: getContestLabel(id) }));
+  }, [contestId]);
 
   const [playerPool, setPlayerPool] = useState<PlayerPoolGolfer[]>([]);
   const [lineups, setLineups] = useState<LeaderboardLineupEntry[]>([]);
@@ -48,13 +67,11 @@ function LiveLeaderboardContent() {
   const [scoreStatus, setScoreStatus] = useState<'checking' | 'live' | 'no-feed' | 'error'>('checking');
 
   useEffect(() => {
-    if (!contest) return;
-    const imported = loadImportedPlayerPool(contest.id);
-    setPlayerPool(imported && imported.length ? imported : getDefaultPlayerPool(contest.id));
-  }, [contest]);
+    const imported = loadImportedPlayerPool(contestId);
+    setPlayerPool(imported && imported.length ? imported : getDefaultPlayerPool(contestId));
+  }, [contestId]);
 
   useEffect(() => {
-    if (!contest) return;
     if (!isFirestoreLineupStorageAvailable()) {
       setLineupStatus('no-feed');
       return;
@@ -64,7 +81,7 @@ function LiveLeaderboardContent() {
     let cancelled = false;
     const unsubscribes = TEST_USERS.map((user) =>
       subscribeToTestLineup(
-        contest.id,
+        contestId,
         user.id,
         (entry) => {
           if (cancelled) return;
@@ -92,10 +109,9 @@ function LiveLeaderboardContent() {
         unsubscribe();
       }
     };
-  }, [contest]);
+  }, [contestId]);
 
   useEffect(() => {
-    if (!contest) return;
     if (!isFirestoreLineupStorageAvailable()) {
       setScoreStatus('no-feed');
       return;
@@ -103,7 +119,7 @@ function LiveLeaderboardContent() {
 
     let cancelled = false;
     const unsubscribe = subscribeToTestGolferScores(
-      contest.id,
+      contestId,
       (nextScores) => {
         if (cancelled) return;
         setScores(nextScores);
@@ -118,7 +134,7 @@ function LiveLeaderboardContent() {
       cancelled = true;
       unsubscribe();
     };
-  }, [contest]);
+  }, [contestId]);
 
   const golfersById = useMemo(
     () => new Map(playerPool.map((golfer) => [golfer.golferId, golfer])),
@@ -174,10 +190,6 @@ function LiveLeaderboardContent() {
       .at(-1);
   }, [scores]);
 
-  if (!contest) {
-    return <div className="min-h-screen bg-[#080c13]" />;
-  }
-
   return (
     <div className="min-h-screen bg-[#080c13] px-4 py-6 text-zinc-100">
       <div className="mx-auto max-w-5xl space-y-4">
@@ -187,11 +199,31 @@ function LiveLeaderboardContent() {
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-400">5x5 Global</p>
               <h1 className="mt-2 text-3xl font-bold tracking-tight">Live Contest Leaderboard</h1>
               <p className="mt-2 text-sm text-zinc-400">
-                {contest.name}
+                {contestName}
                 {viewerUserName ? ` · Viewing as ${viewerUserName}` : ''}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <label className="inline-flex items-center rounded-md border border-white/15 bg-white/5 px-2 text-sm text-zinc-200">
+                <span className="mr-2 text-xs uppercase tracking-wide text-zinc-500">Contest</span>
+                <select
+                  value={contestId}
+                  onChange={(event) => {
+                    const nextContestId = event.target.value;
+                    const next = new URLSearchParams(searchParams.toString());
+                    next.set('contestId', nextContestId);
+                    next.set('userId', viewerUserId);
+                    router.push(`${pathname}?${next.toString()}`);
+                  }}
+                  className="bg-transparent py-2 text-sm text-zinc-100 outline-none"
+                >
+                  {contestOptions.map((option) => (
+                    <option key={option.id} value={option.id} className="bg-[#0d1420]">
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <Button asChild variant="outline" className="border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
                 <Link href={viewerUserId ? `/contests?userId=${encodeURIComponent(viewerUserId)}` : '/contests'}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back to Contests
@@ -268,7 +300,7 @@ function LiveLeaderboardContent() {
 
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Link
-                          href={`/live-lineup?contestId=${contest.id}&userId=${encodeURIComponent(row.userSlug)}&viewerId=${encodeURIComponent(viewerUserId)}`}
+                          href={`/live-lineup?contestId=${contestId}&userId=${encodeURIComponent(row.userSlug)}&viewerId=${encodeURIComponent(viewerUserId)}`}
                           className="inline-flex items-center rounded-md border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-zinc-200 hover:bg-white/10"
                         >
                           <Radio className="mr-1.5 h-3.5 w-3.5" />
@@ -298,7 +330,7 @@ function LiveLeaderboardContent() {
                 Live leaderboard source
               </div>
               <p className="mt-1 text-zinc-400">
-                `test_lineups/{contest.id}/entries` + `test_scores/{contest.id}/golfers` from Firestore.
+                `test_lineups/{contestId}/entries` + `test_scores/{contestId}/golfers` from Firestore.
               </p>
             </div>
           </CardContent>
