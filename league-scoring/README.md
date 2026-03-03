@@ -1,32 +1,40 @@
-Add dynamic player pool and payout calculation logic to the fantasy golf app. The league allows players to opt out between quarters, meaning the total headcount (and total prize pool) can change at the start of Q2, Q3, or Q4.
+Fantasy golf league scoring and standings. The league allows players to opt out between quarters, meaning the total headcount (and total prize pool) can change at the start of Q2, Q3, or Q4.
 
-Implement the following business logic:
+## The Payouts
 
-1. DYNAMIC STATE TRACKING
-- Track an `activePlayers` integer that updates at the start of each Quarter.
-- For Q1, `activePlayers = 20`.
+All dollar amounts below are based on a **20-player pool**. If the active player count changes, all payouts (weekly, quarterly, and season-long) scale proportionally.
 
-2. QUARTERLY POT CALCULATION
-- The Quarterly Buy-in is $50 per active player.
-- Calculate `quarterlyPot = activePlayers * 50`.
-- Calculate payouts using strict percentages so the math auto-adjusts if headcount drops:
-   - 1st Place: 50% of `quarterlyPot`
-   - 2nd Place: 25% of `quarterlyPot`
-   - 3rd Place: 12.5% of `quarterlyPot`
-   - 4th Place: 7.5% of `quarterlyPot`
-   - 5th Place: 5% of `quarterlyPot`
+### Weekly Pots (Total: $5,010 over 27 events)
 
-3. WEEKLY POT CALCULATION
-- The Weekly Buy-in is $10 per active player.
-- Calculate `weeklyPot = activePlayers * 10`.
-- To fund the Season-Long Overall prize, exact fixed amounts must be skimmed from the weekly pots. 
-- Ensure your weekly payout logic handles dynamic scaling if `activePlayers` drops below 20. Set a rule: 
-   - Standard Weeks skim 15% of the `weeklyPot` to route to the `seasonLongPot`. The remaining 85% is distributed to the Top 4 finishers.
-   - Signature and Major Weeks pay out 100% of the `weeklyPot` to the Top 5 finishers (no skimming).
+| Tier | Pot | 1st | 2nd | 3rd | 4th | 5th |
+|------|-----|-----|-----|-----|-----|-----|
+| Standard | $170 | $60 | $50 | $40 | $20 | — |
+| Signature | $200 | $100 | $40 | $30 | $20 | $10 |
+| Major | $200 | $110 | $45 | $20 | $15 | $10 |
 
-4. OPT-OUT CONSEQUENCE
-- If a user opts out, their status becomes `inactive`. 
-- Inactive users are permanently removed from the Season-Long points leaderboard and forfeit any claim to the Season-Long prize. Their points in the active Quarter are wiped.
+- Weekly buy-in: $10/player
+- Standard weeks skim $30 from the pot to fund the Season-Long Overall prize. The remaining $170 is distributed to the top 4.
+- Signature and Major weeks pay out the full $200 to the top 5 (no skim).
+
+### Quarterly "Chunk" Pots (Total: $4,000)
+
+Paid out 4 times a year (Masters, PGA, Travelers, Tour Championship).
+
+| 1st | 2nd | 3rd | 4th | 5th |
+|-----|-----|-----|-----|-----|
+| $500 | $250 | $125 | $75 | $50 |
+
+- Quarterly buy-in: $50/player
+
+### Season-Long Overall (Total: $390)
+
+| 1st | 2nd |
+|-----|-----|
+| $290 | $100 |
+
+### Opt-Out Consequence
+
+If a user opts out, their status becomes `inactive`. Inactive users are permanently removed from the Season-Long points leaderboard and forfeit any claim to the Season-Long prize. Their points in the active Quarter are wiped.
 
 ---
 
@@ -63,7 +71,7 @@ The only required input is **weekly scores** (fantasy points per entrant per eve
 
 | File | Purpose |
 |------|---------|
-| `standings-template.json` | Current computed standings output (rank, points, net dollars, and weekly aggregates). |
+| `season-standings.json` | Current computed standings output (rank, points, net dollars, and weekly aggregates). |
 | `weekly-scores/*.json` | One JSON file per event (input). Each file has `eventId`, `eventName`, and `entries[]` with `entryId`, `entryName`, `weeklyFantasyPoints`. |
 
 Events and tiers are defined in `schedule.json`.
@@ -86,7 +94,7 @@ The `weekly-scores/` JSON files are the **persisted record** used to compute sea
   ```bash
   python3 update_league_standings.py --contest-id week-1-cognizant
   ```
-  This (1) reads Firestore `test_lineups` + `test_scores` for that contest, (2) writes `weekly-scores/{contestId}.json` (e.g. `week-1-cognizant.json`), then (3) recomputes standings from all weekly-scores (championship points, net $, weekly wins, previous week finish) and overwrites `standings-template.json`. Net $ uses $10/week and $60 the first week of each quarter (quarterly buy-in). Requires Firebase credentials (`FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`) and Python packages `google-cloud-firestore` + `google-auth`.
+  This (1) reads Firestore `test_lineups` + `test_scores` for that contest, (2) writes `weekly-scores/{contestId}.json` (e.g. `week-1-cognizant.json`), then (3) recomputes standings from all weekly-scores (championship points, net $, weekly wins, previous week finish) and overwrites `season-standings.json`. Net $ uses $10/week and $60 the first week of each quarter (quarterly buy-in). Requires Firebase credentials (`FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`) and Python packages `google-cloud-firestore` + `google-auth`.
 - **Manual** — Export or paste the final standings (entryId, entryName, weeklyFantasyPoints) into a new JSON file in `weekly-scores/` for that event; then run the script without changing contest (or a separate script) to recompute standings only.
 
 Once a week's file exists in `weekly-scores/`, standings can be computed from all such files plus the schedule and payout rules. A future **Live Standings** UI could show real-time movement by combining: (a) completed weeks from `weekly-scores/` and (b) the current week's live totals from Firestore.
