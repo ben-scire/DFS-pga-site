@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Sparkles } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
 import MainTabsHeader from '@/components/main-tabs-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -178,13 +178,19 @@ function ContestsContent() {
               <div>
                 <CardTitle className="text-2xl tracking-tight">{contest.name}</CardTitle>
                 <CardDescription className="mt-1 text-zinc-400">Home</CardDescription>
+                <p className="mt-2 text-xs text-zinc-400">
+                  Lock: {new Date(contest.lockAtIso).toLocaleString()}
+                </p>
               </div>
               <Badge className={savedLineupSummary.validation.isLocked ? 'bg-zinc-700 text-zinc-100' : 'bg-blue-500/20 text-blue-300'}>
                 {savedLineupSummary.validation.isLocked ? 'LOCKED' : 'OPEN'}
               </Badge>
             </div>
             {savedEntry?.submittedAtIso && (
-              <p className="text-sm text-zinc-400">Saved {new Date(savedEntry.submittedAtIso).toLocaleString()}</p>
+              <div className="inline-flex items-center gap-2 text-sm text-emerald-300">
+                <Check className="h-4 w-4" />
+                Submitted {new Date(savedEntry.submittedAtIso).toLocaleString()}
+              </div>
             )}
           </CardHeader>
 

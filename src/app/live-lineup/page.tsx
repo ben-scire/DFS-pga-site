@@ -231,7 +231,7 @@ function LiveLineupContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#050a12] px-3 py-4 text-zinc-100 sm:px-4 sm:py-6">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#050a12] px-3 py-4 text-zinc-100 sm:px-4 sm:py-6">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-16 top-4 h-64 w-64 rounded-full bg-cyan-500/20 blur-3xl" />
         <div className="absolute -right-20 top-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />

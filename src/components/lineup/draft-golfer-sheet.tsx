@@ -20,9 +20,9 @@ interface DraftGolferSheetProps {
   rosterSize: number;
   isUnderSalaryCap: boolean;
   onSelectGolfer: (golferId: string) => void;
-  onClearLineup: () => void;
-  onSubmitLineup: () => void;
-  canSubmit: boolean;
+  onClearLineup?: () => void;
+  onSubmitLineup?: () => void;
+  canSubmit?: boolean;
   isLocked: boolean;
 }
 

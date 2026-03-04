@@ -57,7 +57,7 @@ export default function DraftGolferPanel({
   }, [playerPool, search, sortKey]);
 
   return (
-    <div className={`flex h-full flex-col bg-[#101116] text-zinc-100 ${className ?? ''}`}>
+    <div className={`flex h-full min-w-0 flex-col overflow-x-hidden bg-[#101116] text-zinc-100 ${className ?? ''}`}>
       <div className={`border-b border-zinc-800 ${compactHeader ? 'px-4 py-3' : 'px-4 py-4'}`}>
         {!compactHeader && <h2 className="text-center text-2xl font-semibold text-zinc-100">Draft Golfer</h2>}
         <div className={`relative ${compactHeader ? '' : 'mt-3'}`}>
@@ -105,29 +105,29 @@ export default function DraftGolferPanel({
           return (
             <div
               key={golfer.golferId}
-              className={`flex items-center gap-3 border-b border-zinc-800 px-3 py-3 text-zinc-900 ${
+              className={`flex min-w-0 items-center gap-2 border-b border-zinc-800 px-2 py-3 text-zinc-900 sm:gap-3 sm:px-3 ${
                 salaryBlocked ? 'bg-[#ececec] opacity-70' : 'bg-[#f0f0f0]'
               }`}
             >
-              <div className="w-6 text-center text-lg font-bold">G</div>
-              <div className="h-16 w-16 overflow-hidden rounded bg-zinc-200">
+              <div className="w-5 shrink-0 text-center text-base font-bold sm:w-6 sm:text-lg">G</div>
+              <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-zinc-200 sm:h-16 sm:w-16">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={golfer.headshotUrl} alt={golfer.name} className="h-full w-full object-cover" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xl font-semibold leading-tight">{golfer.name}</p>
-                <p className="text-xs text-zinc-600">
+                <p className="truncate text-base font-semibold leading-tight sm:text-xl">{golfer.name}</p>
+                <p className="hidden text-xs text-zinc-600 sm:block">
                   T10s: {golfer.top10s ?? '-'} | CUTS: {golfer.cutsMade ?? '-'}/{golfer.cutsAttempts ?? '-'}
                 </p>
-                <p className="text-sm text-zinc-700">{golfer.teeTimeDisplay ?? 'TBD'}</p>
+                <p className="text-xs text-zinc-700 sm:text-sm">{golfer.teeTimeDisplay ?? 'TBD'}</p>
                 {golfer.statusTag && <Badge className="mt-1 rounded bg-red-700 text-white">{golfer.statusTag}</Badge>}
               </div>
-              <div className="min-w-[104px] border-l border-dashed border-zinc-300 pl-3 text-right">
-                <p className="text-2xl font-bold">${golfer.salary.toLocaleString()}</p>
-                <p className="text-sm text-zinc-700">
+              <div className="w-[86px] shrink-0 border-l border-dashed border-zinc-300 pl-2 text-right sm:w-[104px] sm:pl-3">
+                <p className="text-lg font-bold sm:text-2xl">${golfer.salary.toLocaleString()}</p>
+                <p className="text-xs text-zinc-700 sm:text-sm">
                   FPPG <span className="font-semibold">{golfer.fppg?.toFixed(1) ?? '-'}</span>
                 </p>
-                <p className="text-sm text-zinc-700">
+                <p className="hidden text-xs text-zinc-700 sm:block sm:text-sm">
                   AVG <span className="font-semibold">{golfer.avgScore?.toFixed(1) ?? '-'}</span>
                 </p>
               </div>
@@ -139,8 +139,8 @@ export default function DraftGolferPanel({
                   disabled={salaryBlocked}
                   className={
                     isSelected
-                      ? 'h-12 w-12 rounded-full bg-zinc-400 text-white hover:bg-zinc-500'
-                      : 'h-12 w-12 rounded-full bg-zinc-900 text-white hover:bg-zinc-800'
+                      ? 'h-9 w-9 rounded-full bg-zinc-400 text-white hover:bg-zinc-500 sm:h-12 sm:w-12'
+                      : 'h-9 w-9 rounded-full bg-zinc-900 text-white hover:bg-zinc-800 sm:h-12 sm:w-12'
                   }
                 >
                   {isSelected ? <Minus /> : <Plus />}

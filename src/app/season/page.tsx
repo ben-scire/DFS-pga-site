@@ -122,7 +122,7 @@ export default function SeasonPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#040914] px-4 py-6 text-zinc-100">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#040914] px-3 py-5 text-zinc-100 sm:px-4 sm:py-6">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-16 top-8 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
         <div className="absolute -right-16 top-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
@@ -150,7 +150,24 @@ export default function SeasonPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-2xl border border-white/10">
+              <div className="space-y-2 md:hidden">
+                {standings.map((entry) => (
+                  <div key={entry.entryId} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold">{entry.rank ?? '--'}. {entry.entryName}</p>
+                      <p className="text-cyan-300">{entry.championshipPoints ?? '--'} pts</p>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-zinc-400">
+                      <p>Fantasy: {entry.weeklyFantasyPointsTotal ?? '--'}</p>
+                      <p>Net: {typeof entry.netDollars === 'number' ? `$${entry.netDollars.toFixed(2)}` : '--'}</p>
+                      <p>Wins: {entry.weeklyWins ?? '--'}</p>
+                      <p>Last Wk: {entry.previousWeekFinish ?? '--'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto rounded-2xl border border-white/10 md:block">
                 <table className="w-full min-w-[720px] text-sm">
                   <thead className="bg-white/[0.04] text-zinc-300">
                     <tr>
@@ -195,7 +212,7 @@ export default function SeasonPage() {
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto rounded-2xl border border-white/10">
-                  <table className="w-full min-w-[420px] text-xs sm:text-sm">
+                  <table className="w-full text-xs sm:text-sm">
                     <thead className="bg-white/[0.04] text-zinc-300">
                       <tr>
                         <th className="px-2 py-2 text-left">Finish</th>

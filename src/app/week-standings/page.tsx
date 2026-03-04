@@ -57,6 +57,7 @@ function WeekStandingsContent() {
 
   const contest = getWeeklyContestById(contestId);
   const contestName = contest?.name ?? getContestLabel(contestId);
+  const hideLineupPlayerNames = contest ? Date.now() < new Date(contest.lockAtIso).getTime() : false;
   const viewerUserId = session?.userSlug ?? 'guest';
   const contestOptions = useMemo(() => {
     const ids = [contestId, ...WEEKLY_CONTESTS.map((item) => item.id)];
@@ -256,6 +257,7 @@ function WeekStandingsContent() {
                 <CardTitle className="text-xl">Standings</CardTitle>
                 <CardDescription className="text-zinc-400">
                   Ranked by summed lineup fantasy points from Firestore.
+                  {hideLineupPlayerNames ? ' Lineup player names are hidden until lock.' : ''}
                 </CardDescription>
               </div>
               <Badge className="bg-blue-500/20 text-blue-300">{rows.length} entries</Badge>
@@ -314,22 +316,26 @@ function WeekStandingsContent() {
                         </div>
                       </div>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/live-lineup?contestId=${contestId}&userId=${encodeURIComponent(row.userSlug)}`}
-                          className="inline-flex items-center rounded-md border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-zinc-200 hover:bg-white/10"
-                        >
-                          <Radio className="mr-1.5 h-3.5 w-3.5" />
-                          Open lineup
-                        </Link>
-                        <div className="flex flex-wrap gap-1 text-xs text-zinc-400">
-                          {row.lineupGolferIds.slice(0, 6).map((golferId) => (
-                            <span key={golferId} className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5">
-                              {golfersById.get(golferId)?.name ?? golferId}
-                            </span>
-                          ))}
+                      {hideLineupPlayerNames ? (
+                        <div className="mt-2 text-xs text-zinc-400">Lineup submitted</div>
+                      ) : (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/live-lineup?contestId=${contestId}&userId=${encodeURIComponent(row.userSlug)}`}
+                            className="inline-flex items-center rounded-md border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-zinc-200 hover:bg-white/10"
+                          >
+                            <Radio className="mr-1.5 h-3.5 w-3.5" />
+                            Open lineup
+                          </Link>
+                          <div className="flex flex-wrap gap-1 text-xs text-zinc-400">
+                            {row.lineupGolferIds.slice(0, 6).map((golferId) => (
+                              <span key={golferId} className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5">
+                                {golfersById.get(golferId)?.name ?? golferId}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
