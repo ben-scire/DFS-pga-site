@@ -1,30 +1,50 @@
+import entryUsersRaw from '../../league-scoring/entry-users.json';
+
 export interface TestUserOption {
   id: string;
   name: string;
 }
 
-export const TEST_USERS: TestUserOption[] = [
-  { id: 'wyaggy3', name: 'Yaggy' },
-  { id: 'abboduece22', name: 'Abbo' },
-  { id: 'mtibaudo', name: 'Tibaudo' },
-  { id: 'johncastronovo', name: 'Castronovo' },
-  { id: 'cm30', name: 'Murph' },
-  { id: 'rohansharma99', name: 'Rohan' },
-  { id: 'jvaccari33', name: 'Vaccari' },
-  { id: 'sam.scire', name: 'Sam S' },
-  { id: 'capc', name: 'CC' },
-  { id: 'boxmuncher', name: 'Hank' },
-  { id: 'jakdot2009', name: 'Jake D' },
-  { id: 'dylangoody', name: 'Dylan' },
-  { id: 'samthemaam5', name: 'Sam L' },
-  { id: 'tomlinsonj15', name: 'Jay' },
-  { id: 'jpetruney', name: 'Petruney' },
-  { id: 'bscire', name: 'Ben' },
-  { id: 'jake', name: 'Coach Lehman' },
-  { id: 'eions', name: 'Eoin' },
-  { id: 'unccle-neal', name: 'Uncle Neal' },
-  { id: 'finsmaniac', name: 'Fins' },
-];
+interface EntryUserSourceRow {
+  entryName: string;
+  preferredName: string;
+}
+
+export interface TestUserDirectoryEntry {
+  userSlug: string;
+  entryName: string;
+  alias: string;
+}
+
+const EXPECTED_TEST_USER_COUNT = 20;
+
+function toUserSlug(entryName: string): string {
+  return entryName.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+const ENTRY_USER_ROWS = entryUsersRaw as EntryUserSourceRow[];
+
+export const TEST_USER_DIRECTORY: TestUserDirectoryEntry[] = ENTRY_USER_ROWS.map((row) => ({
+  userSlug: toUserSlug(row.entryName),
+  entryName: row.entryName.trim(),
+  alias: row.preferredName.trim(),
+}));
+
+if (TEST_USER_DIRECTORY.length !== EXPECTED_TEST_USER_COUNT) {
+  throw new Error(
+    `Expected ${EXPECTED_TEST_USER_COUNT} users in league-scoring/entry-users.json, found ${TEST_USER_DIRECTORY.length}.`
+  );
+}
+
+const uniqueUserSlugs = new Set(TEST_USER_DIRECTORY.map((row) => row.userSlug));
+if (uniqueUserSlugs.size !== TEST_USER_DIRECTORY.length) {
+  throw new Error('Duplicate usernames detected in league-scoring/entry-users.json.');
+}
+
+export const TEST_USERS: TestUserOption[] = TEST_USER_DIRECTORY.map((row) => ({
+  id: row.userSlug,
+  name: row.alias,
+}));
 
 export const TEST_USER_NAME_BY_ID = Object.fromEntries(
   TEST_USERS.map((user) => [user.id, user.name])
@@ -32,12 +52,14 @@ export const TEST_USER_NAME_BY_ID = Object.fromEntries(
 
 export const TEST_USER_ID_SET = new Set(TEST_USERS.map((user) => user.id));
 const TEST_USER_LOOKUP_BY_KEY = new Map<string, string>(
-  TEST_USERS.flatMap((user) => {
-    const normalizedSlug = normalizeUserIdentifier(user.id);
-    const normalizedName = normalizeUserIdentifier(user.name);
+  TEST_USER_DIRECTORY.flatMap((user) => {
+    const normalizedSlug = normalizeUserIdentifier(user.userSlug);
+    const normalizedAlias = normalizeUserIdentifier(user.alias);
+    const normalizedEntryName = normalizeUserIdentifier(user.entryName);
     return [
-      [normalizedSlug, user.id],
-      [normalizedName, user.id],
+      [normalizedSlug, user.userSlug],
+      [normalizedAlias, user.userSlug],
+      [normalizedEntryName, user.userSlug],
     ] as const;
   })
 );
