@@ -199,7 +199,7 @@ function loadEnvFiles() {
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  let contestId = 'week-1-cognizant';
+  let contestId = 'week-2-arnold-palmer';
   let once = false;
   let dryRun = false;
   let intervalMs = parsePositiveInt(process.env.DATAGOLF_POLL_INTERVAL_MS, DEFAULT_INTERVAL_MS);
@@ -250,14 +250,14 @@ function printHelp() {
   console.log(`Poll a Data Golf live endpoint and write Firestore test_scores docs.
 
 Usage:
-  tsx scripts/sync-datagolf-live-scores.ts [--contest-id week-1-cognizant] [--once] [--dry-run] [--scoring-mode dfs-rules|hybrid|upstream]
+  tsx scripts/sync-datagolf-live-scores.ts [--contest-id week-2-arnold-palmer] [--once] [--dry-run] [--scoring-mode dfs-rules]
   tsx scripts/sync-datagolf-live-scores.ts --url "https://..." --once --dry-run
 
 Env (required unless --url is provided):
   DATAGOLF_LIVE_URL        Full upstream URL. Supports {key} placeholder.
   DATAGOLF_API_KEY         Optional; substituted into DATAGOLF_LIVE_URL when {key} is present.
   DATAGOLF_POLL_INTERVAL_MS  Poll interval (default 30000)
-  DATAGOLF_SCORING_MODE    dfs-rules | hybrid | upstream (default: dfs-rules)
+  DATAGOLF_SCORING_MODE    dfs-rules (default: dfs-rules)
   DATAGOLF_TOURNAMENT_STATS_URL Optional endpoint for position/total/thru enrichment.
 
 Firebase Admin auth (required for writes, not for --dry-run):
@@ -1057,10 +1057,10 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 function parseScoringMode(value: string | undefined): DfsScoringMode {
   const normalized = (value ?? '').trim().toLowerCase();
   if (!normalized) return DEFAULT_SCORING_MODE;
-  if (normalized === 'dfs-rules' || normalized === 'hybrid' || normalized === 'upstream') {
+  if (normalized === 'dfs-rules') {
     return normalized;
   }
-  throw new Error(`Invalid scoring mode "${value}". Use dfs-rules, hybrid, or upstream.`);
+  throw new Error(`Invalid scoring mode "${value}". Only dfs-rules is supported.`);
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

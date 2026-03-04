@@ -2,105 +2,25 @@
   "eventId": 1,
   "eventName": "Cognizant Classic",
   "entries": [
-    {
-      "entryId": "wyaggy3",
-      "entryName": "wyaggy3",
-      "weeklyFantasyPoints": 554.5
-    },
-    {
-      "entryId": "abboduece22",
-      "entryName": "abboduece22",
-      "weeklyFantasyPoints": 481
-    },
-    {
-      "entryId": "eions",
-      "entryName": "eions",
-      "weeklyFantasyPoints": 477
-    },
-    {
-      "entryId": "sam.scire",
-      "entryName": "sam.scire",
-      "weeklyFantasyPoints": 472.5
-    },
-    {
-      "entryId": "samthemaam5",
-      "entryName": "samthemaam5",
-      "weeklyFantasyPoints": 458
-    },
-    {
-      "entryId": "jpetruney",
-      "entryName": "jpetruney",
-      "weeklyFantasyPoints": 456.5
-    },
-    {
-      "entryId": "mtibaudo",
-      "entryName": "mtibaudo",
-      "weeklyFantasyPoints": 440
-    },
-    {
-      "entryId": "jake",
-      "entryName": "Jake",
-      "weeklyFantasyPoints": 439.5
-    },
-    {
-      "entryId": "boxmuncher",
-      "entryName": "boxmuncher",
-      "weeklyFantasyPoints": 434.5
-    },
-    {
-      "entryId": "johncastronovo",
-      "entryName": "johncastronovo",
-      "weeklyFantasyPoints": 433.5
-    },
-    {
-      "entryId": "capc",
-      "entryName": "capc",
-      "weeklyFantasyPoints": 424.5
-    },
-    {
-      "entryId": "rohansharma99",
-      "entryName": "rohansharma99",
-      "weeklyFantasyPoints": 420.5
-    },
-    {
-      "entryId": "finsmaniac",
-      "entryName": "finsmaniac",
-      "weeklyFantasyPoints": 418.5
-    },
-    {
-      "entryId": "bscire",
-      "entryName": "bscire",
-      "weeklyFantasyPoints": 378.5
-    },
-    {
-      "entryId": "cm30",
-      "entryName": "cm30",
-      "weeklyFantasyPoints": 368
-    },
-    {
-      "entryId": "unccle-neal",
-      "entryName": "unccle neal",
-      "weeklyFantasyPoints": 367.5
-    },
-    {
-      "entryId": "jakdot2009",
-      "entryName": "jakdot2009",
-      "weeklyFantasyPoints": 358
-    },
-    {
-      "entryId": "tomlinsonj15",
-      "entryName": "tomlinsonj15",
-      "weeklyFantasyPoints": 350.5
-    },
-    {
-      "entryId": "dylangoody",
-      "entryName": "dylangoody",
-      "weeklyFantasyPoints": 335.5
-    },
-    {
-      "entryId": "jvaccari33",
-      "entryName": "jvaccari33",
-      "weeklyFantasyPoints": 298
-    }
+    { "entryId": "wyaggy3", "entryName": "wyaggy3", "weeklyFantasyPoints": 560.5 },
+    { "entryId": "abboduece22", "entryName": "abboduece22", "weeklyFantasyPoints": 484 },
+    { "entryId": "eions", "entryName": "eions", "weeklyFantasyPoints": 480 },
+    { "entryId": "sam.scire", "entryName": "sam.scire", "weeklyFantasyPoints": 472.5 },
+    { "entryId": "jpetruney", "entryName": "jpetruney", "weeklyFantasyPoints": 462.5 },
+    { "entryId": "samthemaam5", "entryName": "samthemaam5", "weeklyFantasyPoints": 461 },
+    { "entryId": "jake", "entryName": "Jake", "weeklyFantasyPoints": 442.5 },
+    { "entryId": "boxmuncher", "entryName": "boxmuncher", "weeklyFantasyPoints": 440.5 },
+    { "entryId": "mtibaudo", "entryName": "mtibaudo", "weeklyFantasyPoints": 440 },
+    { "entryId": "johncastronovo", "entryName": "johncastronovo", "weeklyFantasyPoints": 439.5 },
+    { "entryId": "capc", "entryName": "capc", "weeklyFantasyPoints": 424.5 },
+    { "entryId": "finsmaniac", "entryName": "finsmaniac", "weeklyFantasyPoints": 421.5 },
+    { "entryId": "rohansharma99", "entryName": "rohansharma99", "weeklyFantasyPoints": 420.5 },
+    { "entryId": "bscire", "entryName": "bscire", "weeklyFantasyPoints": 375.7 },
+    { "entryId": "cm30", "entryName": "cm30", "weeklyFantasyPoints": 371 },
+    { "entryId": "unccle-neal", "entryName": "unccle neal", "weeklyFantasyPoints": 370.5 },
+    { "entryId": "jakdot2009", "entryName": "jakdot2009", "weeklyFantasyPoints": 361 },
+    { "entryId": "tomlinsonj15", "entryName": "tomlinsonj15", "weeklyFantasyPoints": 353.5 },
+    { "entryId": "dylangoody", "entryName": "dylangoody", "weeklyFantasyPoints": 338.5 },
+    { "entryId": "jvaccari33", "entryName": "jvaccari33", "weeklyFantasyPoints": 304 }
   ]
 }

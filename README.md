@@ -52,7 +52,7 @@ Additional local/admin script env vars:
 - `DATAGOLF_LIVE_URL`: Full Data Golf live endpoint URL for polling (supports `{key}` placeholder)
 - `DATAGOLF_API_KEY`: Optional API key substituted into `DATAGOLF_LIVE_URL`
 - `DATAGOLF_POLL_INTERVAL_MS`: Poll interval for Data Golf sync script (default `30000`)
-- `DATAGOLF_SCORING_MODE`: `dfs-rules`, `hybrid`, or `upstream` (default `dfs-rules`)
+- `DATAGOLF_SCORING_MODE`: `dfs-rules` only (default `dfs-rules`)
 - `FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`: Required for server-side writes to `test_scores`
 
 ## DFS API Response Contract
@@ -134,6 +134,8 @@ npm run import:standings -- --csv /absolute/path/to/contest-standings.csv --map 
 Notes:
 - This writes `test_lineups/{contestId}/entries/{userSlug}`.
 - It uses the seeded contest player pool to convert lineup names into `lineupGolferIds`.
+- If the standings CSV includes `Points`/`FPTS`, it also writes `officialWeeklyFantasyPoints`.
+- `league-scoring/update_league_standings.py` will prefer that official value over computed live-score sums.
 - By default it runs in dry-run mode and prints unresolved entries.
 
 ### 2. Poll Data Golf and write live golfer stats (`test_scores`)
@@ -156,14 +158,12 @@ Notes:
 - Supports JSON or CSV responses and normalizes common field names (`player_name`, `position`, `thru`, `score_to_par`, etc.).
 - For true per-player DFS scoring, use Data Golf `preds/live-hole-scores` (not `preds/live-hole-stats`, which is wave-level aggregate data).
 - Computes fantasy points from DFS PGA scoring rules in `dfs-rules` mode:
-  - Double Eagle `+20`, Eagle `+8`, Birdie `+3`, Par `+0.5`, Bogey `-0.5`, Double Bogey or Worse `-1`
-  - Hole in One `+10`, 3-Birdie Streak `+3`, Bogey-Free Round `+3`, All Rounds Under 70 `+5`
+  - Double Eagle `+13`, Eagle `+8`, Birdie `+3`, Par `+0.5`, Bogey `-0.5`, Double Bogey or Worse `-1`
+  - Hole in One `+5`, 3-Birdie Streak `+3`, Bogey-Free Round `+3`, All Rounds Under 70 `+5`
   - Finishing position points: `1st=30`, `2nd=20`, `3rd=18`, `4th=16`, `5th=14`, `6th=12`, `7th=10`, `8th=9`, `9th=8`, `10th=7`, `11-15=6`, `16-20=5`, `21-25=4`, `26-30=3`, `31-40=2`, `41-50=1`
+  - Output points are rounded to `.0` / `.5`.
 - Writes to `test_scores/{contestId}/golfers/{golferId}` with `updatedAt` server timestamps.
-- `fantasyPoints` source is controlled by `DATAGOLF_SCORING_MODE`:
-  - `dfs-rules`: strict computed scoring only
-  - `hybrid`: computed scoring first, fallback to upstream points
-  - `upstream`: trust upstream points directly
+- `fantasyPoints` source is locked to strict `dfs-rules` computation.
 
 ### 3. Production sync for deployed site (Cloud Run Job + Scheduler)
 

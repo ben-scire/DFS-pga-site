@@ -46,7 +46,11 @@ export function parseContestStandingsCsv(csvText: string): ContestStandingsImpor
         entryId,
         entryName,
         timeRemaining: toNumber(read(row, 'TimeRemaining')) ?? undefined,
-        points: toNumber(read(row, 'Points')) ?? undefined,
+        points:
+          toNumber(read(row, 'Points')) ??
+          toNumber(read(row, 'FPTS')) ??
+          toNumber(read(row, 'FantasyPoints')) ??
+          undefined,
         lineupRaw,
         lineupPlayerNames,
       });

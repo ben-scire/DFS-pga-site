@@ -7,6 +7,7 @@ import { ArrowLeft, Radio, RefreshCcw, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { subscribeAuthSession, type AuthSession } from '@/lib/firebase-auth';
 import { subscribeToTestGolferScores, type TestGolferLiveScore } from '@/lib/firestore-live-scores';
 import {
   isFirestoreLineupStorageAvailable,
@@ -15,7 +16,7 @@ import {
 } from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PersistedLineupEntry, PlayerPoolGolfer, WeeklyLeagueContest } from '@/lib/lineup-builder-types';
-import { getTestUserName } from '@/lib/test-users';
+import { getTestUserName, isTestUserId } from '@/lib/test-users';
 import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool, loadPersistedLineup, savePersistedLineup } from '@/lib/weekly-lineup-storage';
 
@@ -74,9 +75,14 @@ function LiveLineupContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? 'week-1-cognizant';
-  const lineupUserId = searchParams.get('userId') ?? 'guest';
-  const viewerUserId = searchParams.get('viewerId')?.trim() || lineupUserId;
+  const contestId = searchParams.get('contestId') ?? 'week-2-arnold-palmer';
+
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  const viewerUserId = session?.userSlug ?? 'guest';
+  const lineupUserIdRaw = searchParams.get('userId')?.trim() || viewerUserId;
+  const lineupUserId = isTestUserId(lineupUserIdRaw) ? lineupUserIdRaw : viewerUserId;
 
   const contest = getWeeklyContestById(contestId) ?? getFallbackContest(contestId);
   const contestOptions = useMemo(() => {
@@ -91,6 +97,20 @@ function LiveLineupContent() {
   const [cloudStatus, setCloudStatus] = useState<'checking' | 'live' | 'local-only' | 'error'>('checking');
   const [liveScores, setLiveScores] = useState<Record<string, TestGolferLiveScore>>({});
   const [scoreStatus, setScoreStatus] = useState<'checking' | 'live' | 'no-feed' | 'error'>('checking');
+
+  useEffect(() => {
+    const unsubscribe = subscribeAuthSession((nextSession) => {
+      setSession(nextSession);
+      setCheckingSession(false);
+      if (!nextSession) {
+        router.replace('/');
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [router]);
 
   useEffect(() => {
     const imported = loadImportedPlayerPool(contestId);
@@ -198,6 +218,14 @@ function LiveLineupContent() {
     };
   }, [lineupGolfers, liveScores]);
 
+  if (checkingSession) {
+    return <div className="min-h-screen bg-[#080c13] text-zinc-100" />;
+  }
+
+  if (!session) {
+    return null;
+  }
+
   if (!validation) {
     return <div className="min-h-screen bg-[#080c13] text-zinc-100" />;
   }
@@ -236,7 +264,6 @@ function LiveLineupContent() {
                     const next = new URLSearchParams(searchParams.toString());
                     next.set('contestId', nextContestId);
                     next.set('userId', lineupUserId);
-                    next.set('viewerId', viewerUserId);
                     router.push(`${pathname}?${next.toString()}`);
                   }}
                   className="bg-transparent py-2 text-sm text-zinc-100 outline-none"
@@ -250,17 +277,17 @@ function LiveLineupContent() {
               </label>
               <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
                 <Button asChild variant="outline" className="border-cyan-300/25 bg-white/[0.03] text-zinc-100 hover:bg-white/10">
-                  <Link href={`/contests?userId=${encodeURIComponent(viewerUserId)}`}>
+                  <Link href="/contests">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back
                   </Link>
                 </Button>
                 <Button asChild className="bg-cyan-500 text-[#061420] hover:bg-cyan-400">
-                  <Link href={`/lineup?contestId=${contestId}&userId=${encodeURIComponent(viewerUserId)}&viewerId=${encodeURIComponent(viewerUserId)}`}>
+                  <Link href={`/lineup?contestId=${contestId}`}>
                     <RefreshCcw className="mr-2 h-4 w-4" /> Lineup
                   </Link>
                 </Button>
                 <Button asChild variant="outline" className="border-cyan-300/25 bg-white/[0.03] text-zinc-100 hover:bg-white/10">
-                  <Link href={`/live-leaderboard?contestId=${contestId}&userId=${encodeURIComponent(viewerUserId)}`}>
+                  <Link href={`/live-leaderboard?contestId=${contestId}`}>
                     <TrendingUp className="mr-2 h-4 w-4" /> Board
                   </Link>
                 </Button>

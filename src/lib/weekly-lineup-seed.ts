@@ -1,8 +1,23 @@
 import type { PlayerPoolGolfer, WeeklyLeagueContest } from '@/lib/lineup-builder-types';
+import { WEEK_2_ARNOLD_PALMER_POOL } from '@/lib/weekly-player-pools/week-2-arnold-palmer';
 
 const DEFAULT_HEADSHOT = 'https://placehold.co/80x80/png';
 
 export const WEEKLY_CONTESTS: WeeklyLeagueContest[] = [
+  {
+    id: 'week-2-arnold-palmer',
+    weekNumber: 2,
+    name: 'WEEK 2 ARNOLD PALMER',
+    hostLabel: 'by dylangoody',
+    entryFeeDisplay: '$0',
+    lockAtIso: '2026-03-05T12:40:00.000Z',
+    status: 'open',
+    lockDisabled: false,
+    testMode: true,
+    salaryCap: 50000,
+    rosterSize: 6,
+    entryNumberLabel: '1/25',
+  },
   {
     id: 'week-1-cognizant',
     weekNumber: 1,
@@ -20,6 +35,7 @@ export const WEEKLY_CONTESTS: WeeklyLeagueContest[] = [
 ];
 
 export const DEFAULT_PLAYER_POOL_BY_CONTEST: Record<string, PlayerPoolGolfer[]> = {
+  'week-2-arnold-palmer': WEEK_2_ARNOLD_PALMER_POOL,
   'week-1-cognizant': [
     { golferId: '42085949', name: 'Ben Griffin', salary: 10500, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 83.1, avgScore: 70.3, top10s: 2, cutsMade: 2, cutsAttempts: 6, teeTimeDisplay: 'Thu 6:45 AM EST', isActive: true },
     { golferId: '42085950', name: 'Jacob Bridgeman', salary: 10200, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 107.9, avgScore: 70.5, top10s: 2, cutsMade: 2, cutsAttempts: 6, teeTimeDisplay: 'Thu 6:45 AM EST', isActive: true },

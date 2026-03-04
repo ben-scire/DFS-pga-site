@@ -64,6 +64,7 @@ The only required input is **weekly scores** (fantasy points per entrant per eve
 | File | Purpose |
 |------|---------|
 | `standings-template.json` | Current computed standings output (rank, points, net dollars, and weekly aggregates). |
+| `season-standings.json` | Same standings output for app season view (written alongside `standings-template.json`). |
 | `weekly-scores/*.json` | One JSON file per event (input). Each file has `eventId`, `eventName`, and `entries[]` with `entryId`, `entryName`, `weeklyFantasyPoints`. |
 
 Events and tiers are defined in `schedule.json`.
@@ -84,9 +85,9 @@ The `weekly-scores/` JSON files are the **persisted record** used to compute sea
 
 - **Script (recommended):** From the `league-scoring/` directory, run:
   ```bash
-  python3 update_league_standings.py --contest-id week-1-cognizant
+  python3 update_league_standings.py --contest-id week-2-arnold-palmer
   ```
-  This (1) reads Firestore `test_lineups` + `test_scores` for that contest, (2) writes `weekly-scores/{contestId}.json` (e.g. `week-1-cognizant.json`), then (3) recomputes standings from all weekly-scores (championship points, net $, weekly wins, previous week finish) and overwrites `standings-template.json`. Net $ uses $10/week and $60 the first week of each quarter (quarterly buy-in). Requires Firebase credentials (`FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`) and Python packages `google-cloud-firestore` + `google-auth`.
+  This (1) reads Firestore `test_lineups` + `test_scores` for that contest, (2) writes `weekly-scores/{contestId}.json` (e.g. `week-2-arnold-palmer.json`), then (3) recomputes standings from all weekly-scores and overwrites both `standings-template.json` and `season-standings.json`. Net $ uses $10/week and $60 the first week of each quarter (quarterly buy-in). If lineup docs contain `officialWeeklyFantasyPoints` (from DK standings import), those values are used as source-of-truth instead of summed golfer live scores. Requires Firebase credentials (`FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`) and Python packages `google-cloud-firestore` + `google-auth`.
 - **Manual** — Export or paste the final standings (entryId, entryName, weeklyFantasyPoints) into a new JSON file in `weekly-scores/` for that event; then run the script without changing contest (or a separate script) to recompute standings only.
 
 Once a week's file exists in `weekly-scores/`, standings can be computed from all such files plus the schedule and payout rules. A future **Live Standings** UI could show real-time movement by combining: (a) completed weeks from `weekly-scores/` and (b) the current week's live totals from Firestore.

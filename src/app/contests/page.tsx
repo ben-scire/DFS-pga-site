@@ -2,54 +2,94 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { LogOut, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { subscribeAuthSession, signOutAuthSession, type AuthSession } from '@/lib/firebase-auth';
+import { savePaymentStatus, subscribePaymentStatusMap } from '@/lib/firestore-payment-status';
 import { loadTestLineup } from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PersistedLineupEntry, PlayerPoolGolfer } from '@/lib/lineup-builder-types';
-import { getTestUserName } from '@/lib/test-users';
+import { TEST_USERS } from '@/lib/test-users';
+import { resolveTestUserFromEntryName } from '@/lib/test-user-entry-aliases';
 import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool, loadPersistedLineup, savePersistedLineup } from '@/lib/weekly-lineup-storage';
+import { toast } from '@/hooks/use-toast';
+import moneyTrackerData from '../../../league-scoring/money-tracker.json';
+
+type MoneyTrackerEntry = {
+  entryName: string;
+  week1Paid?: boolean;
+};
+
+type MoneyTrackerData = {
+  entries?: MoneyTrackerEntry[];
+};
+
+const DEFAULT_PAYMENT_STATUS_BY_SLUG = (moneyTrackerData as MoneyTrackerData).entries?.reduce<Record<string, boolean>>(
+  (acc, row) => {
+    const resolved = resolveTestUserFromEntryName(row.entryName);
+    if (resolved) {
+      acc[resolved.userSlug] = row.week1Paid === true;
+    }
+    return acc;
+  },
+  {}
+) ?? {};
 
 function ContestsContent() {
-  const searchParams = useSearchParams();
-  const userId = searchParams.get('userId') ?? 'guest';
+  const router = useRouter();
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const featuredContest = WEEKLY_CONTESTS[0];
   const featuredContestDef = getWeeklyContestById(featuredContest.id);
-  const resolvedUserName = getTestUserName(userId);
-  const userLabel = resolvedUserName ?? 'Guest';
-  const isValidTestUser = Boolean(resolvedUserName);
 
   const [savedEntry, setSavedEntry] = useState<PersistedLineupEntry | null>(null);
   const [savedPool, setSavedPool] = useState<PlayerPoolGolfer[]>([]);
+  const [paymentStatusBySlug, setPaymentStatusBySlug] = useState<Record<string, boolean>>({});
+  const [savingPaymentSlug, setSavingPaymentSlug] = useState<string | null>(null);
 
   useEffect(() => {
-    const contest = getWeeklyContestById(featuredContest.id);
-    if (!contest) return;
-    if (!isValidTestUser) {
+    const unsubscribe = subscribeAuthSession((nextSession) => {
+      setSession(nextSession);
+      setCheckingSession(false);
+      if (!nextSession) {
+        router.replace('/');
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [router]);
+
+  useEffect(() => {
+    if (!session) {
       setSavedEntry(null);
       return;
     }
 
+    const contest = getWeeklyContestById(featuredContest.id);
+    if (!contest) return;
+
     const importedPool = loadImportedPlayerPool(contest.id);
     setSavedPool(importedPool && importedPool.length ? importedPool : getDefaultPlayerPool(contest.id));
 
-    const localEntry = loadPersistedLineup(contest.id, userId);
+    const localEntry = loadPersistedLineup(contest.id, session.userSlug);
     setSavedEntry(localEntry);
 
     let cancelled = false;
     void (async () => {
       try {
-        const cloudEntry = await loadTestLineup(contest.id, userId);
+        const cloudEntry = await loadTestLineup(contest.id, session.userSlug);
         if (cancelled || !cloudEntry) return;
         setSavedEntry(cloudEntry);
         savePersistedLineup({
           ...cloudEntry,
-          userKey: userId,
+          userKey: session.userSlug,
         });
       } catch {
         // Keep local fallback for this session.
@@ -59,7 +99,26 @@ function ContestsContent() {
     return () => {
       cancelled = true;
     };
-  }, [featuredContest.id, isValidTestUser, userId]);
+  }, [featuredContest.id, session]);
+
+  useEffect(() => {
+    if (!session?.isAdmin) {
+      setPaymentStatusBySlug({});
+      return;
+    }
+
+    setPaymentStatusBySlug(DEFAULT_PAYMENT_STATUS_BY_SLUG);
+
+    const unsubscribe = subscribePaymentStatusMap((nextValue) => {
+      setPaymentStatusBySlug({
+        ...DEFAULT_PAYMENT_STATUS_BY_SLUG,
+        ...nextValue,
+      });
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [session?.isAdmin]);
 
   const savedLineupIds = savedEntry?.lineupGolferIds ?? [];
 
@@ -74,8 +133,35 @@ function ContestsContent() {
     return { validation, golfers };
   }, [featuredContestDef, savedLineupIds, savedPool]);
 
-  if (!featuredContestDef) {
+  const handleSignOut = async () => {
+    await signOutAuthSession();
+    router.replace('/');
+  };
+
+  const handleSetPaymentStatus = async (userSlug: string, paid: boolean) => {
+    if (!session?.isAdmin) return;
+    if (savingPaymentSlug) return;
+
+    setSavingPaymentSlug(userSlug);
+    try {
+      await savePaymentStatus(userSlug, paid, session);
+    } catch (error) {
+      toast({
+        title: 'Payment status update failed',
+        description: error instanceof Error ? error.message : 'Unable to save payment status.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingPaymentSlug(null);
+    }
+  };
+
+  if (!featuredContestDef || checkingSession) {
     return <div className="min-h-screen bg-[#080c13]" />;
+  }
+
+  if (!session) {
+    return null;
   }
 
   return (
@@ -87,13 +173,26 @@ function ContestsContent() {
 
       <div className="relative mx-auto max-w-4xl space-y-5">
         <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#171f2d] via-[#111827] to-[#0b1018] p-6 shadow-[0_24px_90px_rgba(0,0,0,0.5)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-400">5x5 Global</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">2026 Golf DK Championship</h1>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-400">5x5 Global</p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">2026 Golf DK Championship</h1>
+            </div>
+            <Button
+              onClick={() => {
+                void handleSignOut();
+              }}
+              variant="outline"
+              className="border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10"
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Sign Out
+            </Button>
+          </div>
           <div className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
             <Sparkles className="h-4 w-4 text-emerald-300" />
             <div>
               <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Logged In As</p>
-              <p className="text-sm font-semibold text-zinc-100">{userLabel}</p>
+              <p className="text-sm font-semibold text-zinc-100">{session.userDisplayName}</p>
             </div>
           </div>
         </header>
@@ -110,11 +209,6 @@ function ContestsContent() {
                 {savedLineupSummary?.validation.isLocked ? 'LOCKED' : 'OPEN'}
               </Badge>
             </div>
-            {!isValidTestUser && (
-              <p className="text-sm font-medium text-amber-300">
-                Select one of the approved users from the home page to open lineup and leaderboard views.
-              </p>
-            )}
             {savedEntry?.submittedAtIso && (
               <p className="text-sm text-zinc-400">Submitted {new Date(savedEntry.submittedAtIso).toLocaleString()}</p>
             )}
@@ -166,35 +260,75 @@ function ContestsContent() {
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-center text-sm text-zinc-500">
-                  No lineup found for this user.
+                  No lineup found yet.
                 </div>
               )}
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button asChild disabled={!isValidTestUser} className="h-11 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 text-white hover:from-blue-400 hover:to-cyan-300 disabled:pointer-events-none disabled:opacity-50">
-                <Link href={isValidTestUser ? `/lineup?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}&viewerId=${encodeURIComponent(userId)}` : '/'}>
-                  View Lineup
+              <Button asChild className="h-11 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 text-white hover:from-blue-400 hover:to-cyan-300">
+                <Link href={`/lineup?contestId=${featuredContestDef.id}`}>
+                  Edit Lineup
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                <Link href={isValidTestUser ? `/live-lineup?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}&viewerId=${encodeURIComponent(userId)}` : '/'}>
+                <Link href={`/live-lineup?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(session.userSlug)}`}>
                   View Live Lineup
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                <Link href={isValidTestUser ? `/live-leaderboard?contestId=${featuredContestDef.id}&userId=${encodeURIComponent(userId)}` : '/'}>
+                <Link href={`/live-leaderboard?contestId=${featuredContestDef.id}`}>
                   View Live Leaderboard
                 </Link>
               </Button>
-              {!isValidTestUser && (
-                <Button asChild variant="outline" className="h-11 rounded-xl border-amber-300/30 bg-amber-300/10 text-amber-200 hover:bg-amber-300/20">
-                  <Link href="/">Choose User</Link>
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>
+
+        {session.isAdmin && (
+          <Card className="rounded-3xl border border-emerald-300/20 bg-[#0b1a18]/90 text-zinc-100">
+            <CardHeader>
+              <CardTitle>Admin Payment Status</CardTitle>
+              <CardDescription className="text-zinc-400">
+                Toggle paid/unpaid for every user.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {TEST_USERS.map((user) => {
+                const isPaid = paymentStatusBySlug[user.id] === true;
+                const isSaving = savingPaymentSlug === user.id;
+                return (
+                  <div
+                    key={user.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-100">{user.name}</p>
+                      <p className="text-xs text-zinc-400">{user.id}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={isPaid ? 'bg-emerald-500/20 text-emerald-300' : 'bg-zinc-700 text-zinc-200'}>
+                        {isPaid ? 'PAID' : 'UNPAID'}
+                      </Badge>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isSaving}
+                        className="border-white/20 bg-white/5 text-zinc-100 hover:bg-white/10"
+                        onClick={() => {
+                          void handleSetPaymentStatus(user.id, !isPaid);
+                        }}
+                      >
+                        {isSaving ? 'Saving...' : isPaid ? 'Mark Unpaid' : 'Mark Paid'}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

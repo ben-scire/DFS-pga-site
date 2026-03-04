@@ -1,25 +1,56 @@
 "use client";
 
-import { useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Logo } from '@/components/logo';
-import { Users, Trophy } from 'lucide-react';
-import { TEST_USERS } from '@/lib/test-users';
+import { KeyRound, Trophy } from 'lucide-react';
+import { signInOrFirstClaim, subscribeAuthSession } from '@/lib/firebase-auth';
+import { toast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const loginImage = PlaceHolderImages.find(img => img.id === 'golf-course');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const loginImage = PlaceHolderImages.find((img) => img.id === 'golf-course');
 
-  const handleLogin = () => {
-    if (selectedUserId) {
-      router.push(`/contests?userId=${selectedUserId}`);
+  useEffect(() => {
+    const unsubscribe = subscribeAuthSession((session) => {
+      if (session) {
+        router.replace('/contests');
+        return;
+      }
+      setCheckingSession(false);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [router]);
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (submitting) return;
+
+    setSubmitting(true);
+    try {
+      await signInOrFirstClaim(username, password);
+      router.replace('/contests');
+    } catch (error) {
+      toast({
+        title: 'Sign-in failed',
+        description: error instanceof Error ? error.message : 'Unable to sign in.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -30,7 +61,7 @@ export default function LoginPage() {
           src={loginImage.imageUrl}
           alt={loginImage.description}
           fill
-          className="object-cover -z-10 brightness-[0.4]"
+          className="-z-10 object-cover brightness-[0.4]"
           priority
           data-ai-hint={loginImage.imageHint}
         />
@@ -39,30 +70,38 @@ export default function LoginPage() {
         <CardHeader className="items-center text-center">
           <Logo className="h-16 w-16 text-primary" />
           <CardTitle className="text-3xl font-headline">5x5 Global</CardTitle>
-          <CardDescription>Select your name to manage this week&apos;s lineup and standings.</CardDescription>
+          <CardDescription>Enter your username or alias and password. First sign-in creates your password.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-col space-y-1.5">
-              <Select onValueChange={setSelectedUserId}>
-                <SelectTrigger id="user-select" className="w-full">
-                  <SelectValue placeholder="Select a user..." />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {TEST_USERS.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <form className="space-y-4" onSubmit={handleLogin}>
+            <Input
+              id="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
+              placeholder="Username"
+              disabled={checkingSession || submitting}
+            />
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Password"
+              disabled={checkingSession || submitting}
+            />
+            <Button
+              type="submit"
+              disabled={checkingSession || submitting || !username.trim() || !password}
+              className="w-full"
+            >
+              <KeyRound className="mr-2 h-4 w-4" />
+              {submitting ? 'Signing in...' : 'Sign In'}
+            </Button>
+          </form>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2">
-          <Button onClick={handleLogin} disabled={!selectedUserId} className="w-full">
-            <Users className="mr-2 h-4 w-4" /> Open 5x5
-          </Button>
+        <CardFooter>
           <Button asChild variant="outline" className="w-full">
             <Link href="/season">
               <Trophy className="mr-2 h-4 w-4" /> League Standings

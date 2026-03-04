@@ -6,6 +6,8 @@ Flow:
 1) Read final lineup scores from Firestore collections:
    - test_lineups/{contestId}/entries
    - test_scores/{contestId}/golfers
+   If a lineup doc contains `officialWeeklyFantasyPoints`, that value is used
+   as source-of-truth for weeklyFantasyPoints; otherwise golfer sums are used.
 2) Write weekly-scores/{contestId}.json
 3) Recompute standings from all weekly-scores/*.json and write standings-template.json
 
@@ -128,10 +130,14 @@ def fetch_weekly_entries(contest_id: str) -> List[Dict]:
         data = doc.to_dict() or {}
         entry_id = str(data.get("userSlug") or doc.id)
         entry_name = str(data.get("userDisplayName") or entry_id)
-        lineup_ids = data.get("lineupGolferIds") or []
-        total = 0.0
-        for gid in lineup_ids:
-            total += golfer_points.get(str(gid), 0.0)
+        official_points = data.get("officialWeeklyFantasyPoints")
+        if isinstance(official_points, (int, float)):
+            total = float(official_points)
+        else:
+            lineup_ids = data.get("lineupGolferIds") or []
+            total = 0.0
+            for gid in lineup_ids:
+                total += golfer_points.get(str(gid), 0.0)
         weekly_entries.append(
             {
                 "entryId": entry_id,
@@ -325,7 +331,7 @@ def compute_standings(schedule: List[ScheduleEvent], weekly_data: List[Tuple[int
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Update weekly scores + standings from Firestore.")
-    parser.add_argument("--contest-id", default="week-1-cognizant", help="Firestore contest id")
+    parser.add_argument("--contest-id", default="week-2-arnold-palmer", help="Firestore contest id")
     parser.add_argument("--event-id", type=int, default=None, help="Override schedule event id")
     args = parser.parse_args()
 
@@ -357,9 +363,15 @@ def main() -> None:
 
     weekly_data = load_weekly_files(league_dir)
     standings = compute_standings(schedule, weekly_data)
+    standings_payload = json.dumps(standings, indent=2)
     standings_path = league_dir / "standings-template.json"
-    standings_path.write_text(json.dumps(standings, indent=2), encoding="utf-8")
+    standings_path.write_text(standings_payload, encoding="utf-8")
     print(f"Wrote {standings_path}")
+
+    # Keep PR#4 season standings artifact in sync with the canonical template output.
+    season_standings_path = league_dir / "season-standings.json"
+    season_standings_path.write_text(standings_payload, encoding="utf-8")
+    print(f"Wrote {season_standings_path}")
 
 
 if __name__ == "__main__":
