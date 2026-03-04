@@ -1,7 +1,11 @@
-import Link from 'next/link';
-import { ArrowLeft, Calendar, Medal, Trophy } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+"use client";
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Calendar, Medal, Trophy } from 'lucide-react';
+import MainTabsHeader from '@/components/main-tabs-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { subscribeAuthSession, type AuthSession } from '@/lib/firebase-auth';
 import standingsData from '../../../league-scoring/season-standings.json';
 import scheduleData from '../../../league-scoring/schedule.json';
 import weekOneData from '../../../league-scoring/weekly-scores/week-1-cognizant.json';
@@ -69,6 +73,24 @@ const SCORING_MATRIX = [
 ];
 
 export default function SeasonPage() {
+  const router = useRouter();
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = subscribeAuthSession((nextSession) => {
+      setSession(nextSession);
+      setCheckingSession(false);
+      if (!nextSession) {
+        router.replace('/');
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [router]);
+
   const standings = [...(standingsData as StandingsEntry[])].sort((a, b) => {
     const pointsDelta = (b.championshipPoints ?? -1) - (a.championshipPoints ?? -1);
     if (pointsDelta !== 0) return pointsDelta;
@@ -91,6 +113,14 @@ export default function SeasonPage() {
     .filter((event) => event.id > weekOne.eventId)
     .slice(0, 5);
 
+  if (checkingSession) {
+    return <div className="min-h-screen bg-[#040914]" />;
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#040914] px-4 py-6 text-zinc-100">
       <div className="pointer-events-none absolute inset-0">
@@ -100,18 +130,12 @@ export default function SeasonPage() {
       </div>
 
       <div className="relative mx-auto max-w-6xl space-y-4">
+        <MainTabsHeader session={session} activeTab="season" />
+
         <header className="rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-[#101a2c] via-[#0b1322] to-[#080d15] p-5 shadow-[0_20px_80px_rgba(0,0,0,0.5)]">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200/70">5x5 Global</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">League Standings</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight">Season Standings</h1>
           <p className="mt-2 text-sm text-zinc-400">2026 Golf DK Championship season race and points matrix.</p>
-          <div className="mt-4">
-            <Button asChild variant="outline" className="border-cyan-300/25 bg-white/[0.03] text-zinc-100 hover:bg-white/10">
-              <Link href="/contests">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Contests
-              </Link>
-            </Button>
-          </div>
         </header>
 
         <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
