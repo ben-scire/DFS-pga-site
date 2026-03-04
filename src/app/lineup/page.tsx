@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import { AlertCircle, Check, ChevronLeft, MoreVertical } from 'lucide-react';
+import MainTabsHeader from '@/components/main-tabs-header';
 import DraftGolferPanel from '@/components/lineup/draft-golfer-panel';
 import DraftGolferSheet from '@/components/lineup/draft-golfer-sheet';
 import LineupSlotRow from '@/components/lineup/lineup-slot-row';
@@ -249,7 +250,9 @@ function LineupContent() {
 
   return (
     <div className="min-h-screen bg-[#0f1116] text-zinc-100">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col bg-[#101216] shadow-2xl">
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-3 bg-[#101216] px-3 py-3 shadow-2xl">
+        <MainTabsHeader session={session} activeTab="lineup" contestId={contest.id} />
+
         <header className="flex items-center justify-between border-b border-zinc-800 bg-[#101216] px-4 py-4 lg:px-6">
           <Link href="/contests" className="text-zinc-300">
             <ChevronLeft className="h-8 w-8" />

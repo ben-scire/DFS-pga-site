@@ -62,14 +62,22 @@ service cloud.firestore {
       return data.keys().hasOnly([
           'userSlug',
           'userDisplayName',
+          'week1Paid',
+          'week2Paid',
+          'quarter1Paid',
           'paid',
+          'updatedByUid',
           'updatedBySlug',
           'updatedAt'
         ]) &&
         data.userSlug == userSlug &&
         isApprovedUserSlug(userSlug) &&
         data.userDisplayName is string &&
-        data.paid is bool &&
+        (!('week1Paid' in data) || data.week1Paid is bool) &&
+        (!('week2Paid' in data) || data.week2Paid is bool) &&
+        (!('quarter1Paid' in data) || data.quarter1Paid is bool) &&
+        (!('paid' in data) || data.paid is bool) &&
+        (!('updatedByUid' in data) || data.updatedByUid is string) &&
         data.updatedBySlug is string &&
         isAdminUserSlug(data.updatedBySlug);
     }
