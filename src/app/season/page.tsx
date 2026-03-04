@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, Calendar, Medal, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import standingsData from '../../../league-scoring/standings-template.json';
+import standingsData from '../../../league-scoring/season-standings.json';
 import scheduleData from '../../../league-scoring/schedule.json';
 import weekOneData from '../../../league-scoring/weekly-scores/week-1-cognizant.json';
 

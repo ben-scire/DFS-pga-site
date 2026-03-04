@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config as loadDotenv } from 'dotenv';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { doc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore';
+import { applicationDefault, cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import {
   normalizeNameForMatching,
   parseContestStandingsCsv,
@@ -18,15 +18,6 @@ type CliOptions = {
   write: boolean;
   allowUnmapped: boolean;
   entryOverrides: Record<string, string>;
-};
-
-type FirebasePublicConfig = {
-  apiKey: string;
-  authDomain: string;
-  projectId: string;
-  storageBucket: string;
-  messagingSenderId: string;
-  appId: string;
 };
 
 type PreparedImportRow = {
@@ -97,15 +88,13 @@ async function main() {
     return;
   }
 
-  const firebaseConfig = readFirebasePublicConfig();
-  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  initFirebaseAdmin();
+  const db = getFirestore();
   const nowIso = new Date().toISOString();
 
   for (const row of preparedRows) {
-    const ref = doc(db, 'test_lineups', options.contestId, 'entries', row.userSlug);
-    await setDoc(
-      ref,
+    const ref = db.collection('test_lineups').doc(options.contestId).collection('entries').doc(row.userSlug);
+    await ref.set(
       {
         contestId: options.contestId,
         userSlug: row.userSlug,
@@ -113,9 +102,16 @@ async function main() {
         lineupGolferIds: row.lineupGolferIds,
         submittedAtIso: nowIso,
         lastEditedAtIso: nowIso,
-        updatedAt: serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         source: 'web-test',
         version: 1,
+        ...(typeof row.points === 'number'
+          ? {
+              officialWeeklyFantasyPoints: Number(row.points.toFixed(1)),
+              officialPointsSource: 'dk-standings-csv',
+              officialPointsImportedAtIso: nowIso,
+            }
+          : {}),
       },
       { merge: true }
     );
@@ -131,7 +127,7 @@ function loadEnvFiles() {
 
 function parseArgs(argv: string[]): CliOptions {
   let csvPath = '';
-  let contestId = 'week-1-cognizant';
+  let contestId = 'week-2-arnold-palmer';
   let write = false;
   let allowUnmapped = false;
   const entryOverrides: Record<string, string> = {};
@@ -192,7 +188,7 @@ function printHelp() {
   console.log(`Import contest standings CSV into Firestore test_lineups.
 
 Usage:
-  tsx scripts/import-contest-standings.ts --csv /path/to/contest-standings.csv [--contest-id week-1-cognizant] [--write] [--allow-unmapped]
+  tsx scripts/import-contest-standings.ts --csv /path/to/contest-standings.csv [--contest-id week-2-arnold-palmer] [--write] [--allow-unmapped]
   tsx scripts/import-contest-standings.ts --csv /path/to/file.csv --map cm30=coach --map capc=ceec --write
 
 Defaults:
@@ -200,24 +196,33 @@ Defaults:
 `);
 }
 
-function readFirebasePublicConfig(): FirebasePublicConfig {
-  const config = {
-    apiKey: (process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '').trim(),
-    authDomain: (process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '').trim(),
-    projectId: (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '').trim(),
-    storageBucket: (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '').trim(),
-    messagingSenderId: (process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '').trim(),
-    appId: (process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? '').trim(),
-  };
-
-  const missing = Object.entries(config)
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
-  if (missing.length) {
-    throw new Error(`Missing Firebase public env vars: ${missing.join(', ')}`);
+function initFirebaseAdmin() {
+  if (getApps().length) {
+    return getApp();
   }
 
-  return config;
+  const rawJson = (process.env.FIREBASE_SERVICE_ACCOUNT_JSON ?? '').trim();
+  if (rawJson) {
+    const serviceAccount = JSON.parse(rawJson) as {
+      project_id?: string;
+      client_email?: string;
+      private_key?: string;
+    };
+    if (!serviceAccount.project_id || !serviceAccount.client_email || !serviceAccount.private_key) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is missing required fields.');
+    }
+    return initializeApp({
+      credential: cert({
+        projectId: serviceAccount.project_id,
+        clientEmail: serviceAccount.client_email,
+        privateKey: serviceAccount.private_key,
+      }),
+    });
+  }
+
+  return initializeApp({
+    credential: applicationDefault(),
+  });
 }
 
 function buildGolferLookup(

@@ -3,9 +3,10 @@ import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
 type CsvRow = Record<string, string>;
 
 const HEADERS = {
+  golferId: ['id', 'golferid', 'playerid', 'dk_id'],
   name: ['name', 'player', 'golfer', 'player_name'],
   salary: ['salary', 'dk_salary', 'price'],
-  fppg: ['fppg', 'avg_points', 'fantasy_points_per_game'],
+  fppg: ['fppg', 'avg_points', 'fantasy_points_per_game', 'avgpointspergame'],
   avgScore: ['avg', 'avg_score', 'average', 'scoring_avg'],
   cutsMade: ['cutsmade', 'cuts_made'],
   cutsAttempts: ['cutsattempts', 'cuts_attempts', 'cuts'],
@@ -23,16 +24,19 @@ export function parsePlayerPoolCsv(csvText: string): PlayerPoolGolfer[] {
 }
 
 function toPlayerPoolGolfer(row: CsvRow, index: number): PlayerPoolGolfer | null {
+  const golferId =
+    pick(row, HEADERS.golferId) ||
+    pick(row, ['nameid'])
+      ?.match(/\((\d+)\)/)?.[1] ||
+    null;
   const name = pick(row, HEADERS.name);
   const salary = toNumber(pick(row, HEADERS.salary));
   if (!name || salary === null) {
     return null;
   }
 
-  const golferId = slugify(name) || `golfer-${index + 1}`;
-
   return {
-    golferId,
+    golferId: golferId ?? (slugify(name) || `golfer-${index + 1}`),
     name,
     salary,
     position: 'G',

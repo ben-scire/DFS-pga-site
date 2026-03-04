@@ -7,13 +7,14 @@ import { ArrowLeft, Radio, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { subscribeAuthSession, type AuthSession } from '@/lib/firebase-auth';
 import { subscribeToTestGolferScores, type TestGolferLiveScore } from '@/lib/firestore-live-scores';
 import {
   isFirestoreLineupStorageAvailable,
   subscribeToTestLineup,
 } from '@/lib/firestore-lineups';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
-import { getTestUserName, TEST_USERS } from '@/lib/test-users';
+import { TEST_USERS } from '@/lib/test-users';
 import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool } from '@/lib/weekly-lineup-storage';
 
@@ -49,12 +50,15 @@ function LiveLeaderboardContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? 'week-1-cognizant';
-  const viewerUserId = searchParams.get('userId')?.trim() || 'guest';
+  const contestId = searchParams.get('contestId') ?? 'week-2-arnold-palmer';
+
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const contest = getWeeklyContestById(contestId);
   const contestName = contest?.name ?? getContestLabel(contestId);
-  const viewerUserName = getTestUserName(viewerUserId) ?? viewerUserId;
+  const viewerUserId = session?.userSlug ?? 'guest';
+  const viewerUserName = session?.userDisplayName ?? 'guest';
   const contestOptions = useMemo(() => {
     const ids = [contestId, ...WEEKLY_CONTESTS.map((item) => item.id)];
     return Array.from(new Set(ids)).map((id) => ({ id, label: getContestLabel(id) }));
@@ -65,6 +69,20 @@ function LiveLeaderboardContent() {
   const [scores, setScores] = useState<Record<string, TestGolferLiveScore>>({});
   const [lineupStatus, setLineupStatus] = useState<'checking' | 'live' | 'no-feed' | 'error'>('checking');
   const [scoreStatus, setScoreStatus] = useState<'checking' | 'live' | 'no-feed' | 'error'>('checking');
+
+  useEffect(() => {
+    const unsubscribe = subscribeAuthSession((nextSession) => {
+      setSession(nextSession);
+      setCheckingSession(false);
+      if (!nextSession) {
+        router.replace('/');
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [router]);
 
   useEffect(() => {
     const imported = loadImportedPlayerPool(contestId);
@@ -190,6 +208,14 @@ function LiveLeaderboardContent() {
       .at(-1);
   }, [scores]);
 
+  if (checkingSession) {
+    return <div className="min-h-screen bg-[#080c13]" />;
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-[#080c13] px-4 py-6 text-zinc-100">
       <div className="mx-auto max-w-5xl space-y-4">
@@ -212,7 +238,6 @@ function LiveLeaderboardContent() {
                     const nextContestId = event.target.value;
                     const next = new URLSearchParams(searchParams.toString());
                     next.set('contestId', nextContestId);
-                    next.set('userId', viewerUserId);
                     router.push(`${pathname}?${next.toString()}`);
                   }}
                   className="bg-transparent py-2 text-sm text-zinc-100 outline-none"
@@ -225,7 +250,7 @@ function LiveLeaderboardContent() {
                 </select>
               </label>
               <Button asChild variant="outline" className="border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                <Link href={viewerUserId ? `/contests?userId=${encodeURIComponent(viewerUserId)}` : '/contests'}>
+                <Link href="/contests">
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back to Contests
                 </Link>
               </Button>
@@ -300,7 +325,7 @@ function LiveLeaderboardContent() {
 
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Link
-                          href={`/live-lineup?contestId=${contestId}&userId=${encodeURIComponent(row.userSlug)}&viewerId=${encodeURIComponent(viewerUserId)}`}
+                          href={`/live-lineup?contestId=${contestId}&userId=${encodeURIComponent(row.userSlug)}`}
                           className="inline-flex items-center rounded-md border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-zinc-200 hover:bg-white/10"
                         >
                           <Radio className="mr-1.5 h-3.5 w-3.5" />

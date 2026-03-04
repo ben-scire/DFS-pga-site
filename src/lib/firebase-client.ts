@@ -1,4 +1,5 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 export interface FirebasePublicConfig {
@@ -39,3 +40,8 @@ export function getFirestoreClient(): Firestore | null {
   return getFirestore(app);
 }
 
+export function getFirebaseAuthClient(): Auth | null {
+  const app = getFirebaseAppClient();
+  if (!app) return null;
+  return getAuth(app);
+}

@@ -15,7 +15,7 @@ import { toast } from '@/hooks/use-toast';
 
 function AdminPlayerPoolContent() {
   const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? 'week-1-cognizant';
+  const contestId = searchParams.get('contestId') ?? 'week-2-arnold-palmer';
   const contest = getWeeklyContestById(contestId);
   const [csvText, setCsvText] = useState('');
 

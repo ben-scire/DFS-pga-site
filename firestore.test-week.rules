@@ -27,6 +27,45 @@ service cloud.firestore {
       ];
     }
 
+    function isAllowedContest(contestId) {
+      return contestId in ['week-1-cognizant', 'week-2-arnold-palmer'];
+    }
+
+    function isAdminUserSlug(userSlug) {
+      return userSlug in ['finsmaniac', 'bscire', 'dylangoody'];
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnProfile(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidProfilePayload(data, uid) {
+      return data.keys().hasOnly(['uid', 'userSlug', 'createdAt', 'updatedAt']) &&
+        data.uid == uid &&
+        data.userSlug is string &&
+        isApprovedUserSlug(data.userSlug);
+    }
+
+    function authUserSlug() {
+      return get(/databases/$(database)/documents/test_users/$(request.auth.uid)).data.userSlug;
+    }
+
+    function authSlugMatches(userSlug) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/test_users/$(request.auth.uid)) &&
+        authUserSlug() == userSlug;
+    }
+
+    function isAdminAuth() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/test_users/$(request.auth.uid)) &&
+        isAdminUserSlug(authUserSlug());
+    }
+
     function isValidTestLineupPayload(data, contestId, userSlug) {
       return data.keys().hasOnly([
           'contestId',
@@ -50,16 +89,52 @@ service cloud.firestore {
         data.version == 1;
     }
 
-    match /test_lineups/week-1-cognizant/entries/{userSlug} {
-      allow read: if isApprovedUserSlug(userSlug);
-      allow create, update: if isApprovedUserSlug(userSlug) &&
-        isValidTestLineupPayload(request.resource.data, 'week-1-cognizant', userSlug);
+    function isValidPaymentStatusPayload(data, userSlug) {
+      return data.keys().hasOnly([
+          'userSlug',
+          'userDisplayName',
+          'paid',
+          'updatedByUid',
+          'updatedBySlug',
+          'updatedAt'
+        ]) &&
+        data.userSlug == userSlug &&
+        isApprovedUserSlug(userSlug) &&
+        data.userDisplayName is string &&
+        data.paid is bool &&
+        data.updatedByUid == request.auth.uid &&
+        data.updatedBySlug == authUserSlug();
+    }
+
+    match /test_users/{uid} {
+      allow read: if isOwnProfile(uid);
+      allow create: if isOwnProfile(uid) && isValidProfilePayload(request.resource.data, uid);
+      allow update: if isOwnProfile(uid) &&
+        resource.data.userSlug == request.resource.data.userSlug &&
+        isValidProfilePayload(request.resource.data, uid);
       allow delete: if false;
     }
 
-    match /test_scores/week-1-cognizant/golfers/{golferId} {
-      allow read: if true;
+    match /test_lineups/{contestId}/entries/{userSlug} {
+      allow read: if isSignedIn() && isAllowedContest(contestId) && isApprovedUserSlug(userSlug);
+      allow create, update: if isAllowedContest(contestId) &&
+        isApprovedUserSlug(userSlug) &&
+        authSlugMatches(userSlug) &&
+        isValidTestLineupPayload(request.resource.data, contestId, userSlug);
+      allow delete: if false;
+    }
+
+    match /test_scores/{contestId}/golfers/{golferId} {
+      allow read: if isSignedIn() && isAllowedContest(contestId);
       allow write: if false;
+    }
+
+    match /test_payment_status/{userSlug} {
+      allow read: if isSignedIn() && isApprovedUserSlug(userSlug);
+      allow create, update: if isApprovedUserSlug(userSlug) &&
+        isAdminAuth() &&
+        isValidPaymentStatusPayload(request.resource.data, userSlug);
+      allow delete: if false;
     }
 
     match /{document=**} {
