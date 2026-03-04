@@ -18,7 +18,6 @@ import {
 } from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
-import { upsertLineupEntryTestFirestore } from '@/lib/lineup-submission';
 import { getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import {
   loadImportedPlayerPool,
@@ -175,19 +174,21 @@ function LineupContent() {
     if (!contest || !session || validation?.isLocked) return;
 
     const nowIso = new Date().toISOString();
+    const nextSubmittedAtIso = submittedAtIso ?? nowIso;
+    setSubmittedAtIso(nextSubmittedAtIso);
 
     savePersistedLineup({
       contestId: contest.id,
       userKey: session.userSlug,
       userDisplayName: session.userDisplayName,
       lineupGolferIds,
-      submittedAtIso: submittedAtIso ?? undefined,
+      submittedAtIso: nextSubmittedAtIso,
       lastEditedAtIso: nowIso,
     });
 
     if (!isFirestoreLineupStorageAvailable()) {
       setCloudStatus('local-only');
-      toast({ title: 'Saved locally', description: 'Firestore unavailable in this session.' });
+      router.push(`/contests?contestId=${encodeURIComponent(contest.id)}`);
       return;
     }
 
@@ -197,39 +198,15 @@ function LineupContent() {
         userKey: session.userSlug,
         userDisplayName: session.userDisplayName,
         lineupGolferIds,
-        submittedAtIso: submittedAtIso ?? undefined,
+        submittedAtIso: nextSubmittedAtIso,
         lastEditedAtIso: nowIso,
       });
       setCloudStatus('live');
-      toast({ title: 'Lineup saved', description: 'You can keep editing until lock.' });
+      router.push(`/contests?contestId=${encodeURIComponent(contest.id)}`);
     } catch {
       setCloudStatus('error');
-      toast({ title: 'Save failed', description: 'Saved locally only.', variant: 'destructive' });
+      router.push(`/contests?contestId=${encodeURIComponent(contest.id)}`);
     }
-  };
-
-  const handleSubmit = async () => {
-    if (!contest || !session) return;
-    const response = await upsertLineupEntryTestFirestore({
-      contest,
-      playerPool,
-      userKey: session.userSlug,
-      userDisplayName: session.userDisplayName,
-      lineupGolferIds,
-    });
-
-    if (!response.success) {
-      toast({
-        title: 'Lineup invalid',
-        description: response.validation.errors[0] ?? 'Fix lineup errors before submitting.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setSubmittedAtIso(response.submittedAtIso ?? new Date().toISOString());
-    toast({ title: 'Lineup submitted', description: 'Your lineup is now locked for this contest.' });
-    router.push('/contests');
   };
 
   if (checkingSession) {
@@ -249,7 +226,7 @@ function LineupContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1116] text-zinc-100">
+    <div className="min-h-screen overflow-x-hidden bg-[#0f1116] text-zinc-100">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-3 bg-[#101216] px-3 py-3 shadow-2xl">
         <MainTabsHeader session={session} activeTab="lineup" contestId={contest.id} />
 
@@ -272,11 +249,18 @@ function LineupContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 border-b border-zinc-300 bg-[#f2f2f2] text-center text-sm text-zinc-700">
-              <div className="px-2 py-3">Entry: {contest.entryFeeDisplay}</div>
-              <div className="px-2 py-3">{new Date(contest.lockAtIso).toLocaleString()}</div>
-              <div className="px-2 py-3 font-mono">{countdown}</div>
-              <div className="px-2 py-3">{contest.entryNumberLabel}</div>
+            <div className="grid grid-cols-2 border-b border-zinc-300 bg-[#f2f2f2] text-center text-xs text-zinc-700 sm:grid-cols-4 sm:text-sm">
+              <div className="truncate px-2 py-3">Entry: {contest.entryFeeDisplay}</div>
+              <div className="truncate px-2 py-3">
+                {new Date(contest.lockAtIso).toLocaleString([], {
+                  month: 'numeric',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </div>
+              <div className="truncate px-2 py-3 font-mono">{countdown}</div>
+              <div className="truncate px-2 py-3">{contest.entryNumberLabel}</div>
             </div>
 
             <div className="border-b border-zinc-800 bg-blue-500/10 px-4 py-2 text-xs text-blue-200">
@@ -349,7 +333,7 @@ function LineupContent() {
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-1 border-t border-zinc-800 px-2 py-2">
+              <div className="grid grid-cols-2 gap-1 border-t border-zinc-800 px-2 py-2">
                 <Button
                   type="button"
                   variant="ghost"
@@ -369,26 +353,6 @@ function LineupContent() {
                   className="h-11 text-base font-semibold text-emerald-400 hover:bg-zinc-800"
                 >
                   Save
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setDraftOpen(true)}
-                  disabled={validation.isLocked}
-                  className="h-11 text-base font-semibold text-blue-400 hover:bg-zinc-800 lg:hidden"
-                >
-                  Draft
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    void handleSubmit();
-                  }}
-                  disabled={!validation.canSubmit}
-                  className="h-11 text-base font-semibold text-blue-400 hover:bg-zinc-800 lg:col-span-2"
-                >
-                  Submit
                 </Button>
               </div>
             </div>
@@ -422,11 +386,6 @@ function LineupContent() {
         rosterSize={contest.rosterSize}
         isUnderSalaryCap={validation.isUnderSalaryCap}
         onSelectGolfer={toggleGolfer}
-        onClearLineup={clearLineup}
-        onSubmitLineup={() => {
-          void handleSave();
-        }}
-        canSubmit={!validation.isLocked}
         isLocked={validation.isLocked}
       />
     </div>

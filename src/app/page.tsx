@@ -3,13 +3,12 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Logo } from '@/components/logo';
-import { KeyRound, Trophy } from 'lucide-react';
+import { KeyRound } from 'lucide-react';
 import { signInOrFirstClaim, subscribeAuthSession } from '@/lib/firebase-auth';
 import { toast } from '@/hooks/use-toast';
 
@@ -101,13 +100,6 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter>
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/season">
-              <Trophy className="mr-2 h-4 w-4" /> League Standings
-            </Link>
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   );

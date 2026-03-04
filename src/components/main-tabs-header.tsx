@@ -36,8 +36,9 @@ export default function MainTabsHeader({ session, activeTab, contestId = 'week-2
 
   return (
     <header className={cn('rounded-2xl border border-white/10 bg-[#111827]/90 p-3', className)}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="overflow-x-auto">
+          <div className="flex min-w-max items-center gap-2 pr-1">
           {tabs
             .filter((tab) => !tab.hidden)
             .map((tab) => {
@@ -57,10 +58,11 @@ export default function MainTabsHeader({ session, activeTab, contestId = 'week-2
                 </Link>
               );
             })}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <p className="text-xs text-zinc-400">{session.userDisplayName}</p>
+          <p className="hidden text-xs text-zinc-400 sm:block">{session.userDisplayName}</p>
           <Button
             type="button"
             size="sm"

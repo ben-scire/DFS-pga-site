@@ -87,7 +87,7 @@ export default function AdminPaymentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080c13] px-4 py-6 text-zinc-100">
+    <div className="min-h-screen overflow-x-hidden bg-[#080c13] px-3 py-5 text-zinc-100 sm:px-4 sm:py-6">
       <div className="mx-auto max-w-5xl space-y-4">
         <MainTabsHeader session={session} activeTab="admin" />
 
@@ -96,8 +96,57 @@ export default function AdminPaymentsPage() {
             <CardTitle>Admin Payments</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-xl border border-white/10">
-              <table className="w-full min-w-[480px] text-sm">
+            <div className="space-y-2 md:hidden">
+              {rows.map(({ user, status }) => (
+                <div key={user.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="mb-2">
+                    <p className="font-medium">{user.name}</p>
+                    <p className="text-xs text-zinc-500">{user.id}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <label className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
+                      <span>W1</span>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-emerald-400"
+                        checked={status.week1Paid}
+                        disabled={savingKey === `${user.id}:week1Paid`}
+                        onChange={(event) => {
+                          void toggleField(user.id, 'week1Paid', event.target.checked);
+                        }}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
+                      <span>W2</span>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-emerald-400"
+                        checked={status.week2Paid}
+                        disabled={savingKey === `${user.id}:week2Paid`}
+                        onChange={(event) => {
+                          void toggleField(user.id, 'week2Paid', event.target.checked);
+                        }}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
+                      <span>Q1</span>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-emerald-400"
+                        checked={status.quarter1Paid}
+                        disabled={savingKey === `${user.id}:quarter1Paid`}
+                        onChange={(event) => {
+                          void toggleField(user.id, 'quarter1Paid', event.target.checked);
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-xl border border-white/10 md:block">
+              <table className="w-full text-sm">
                 <thead className="bg-white/[0.04] text-zinc-300">
                   <tr>
                     <th className="px-3 py-2 text-left">User</th>
