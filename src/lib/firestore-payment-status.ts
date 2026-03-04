@@ -48,7 +48,6 @@ export async function savePaymentStatus(userSlug: string, paid: boolean, actor: 
       userSlug,
       userDisplayName: getTestUserName(userSlug) ?? userSlug,
       paid,
-      updatedByUid: actor.uid,
       updatedBySlug: actor.userSlug,
       updatedAt: serverTimestamp(),
     },

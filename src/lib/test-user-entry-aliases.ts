@@ -1,9 +1,9 @@
-import { TEST_USERS } from './test-users';
+import { TEST_USER_DIRECTORY, TEST_USERS } from './test-users';
 import { normalizeNameForMatching } from './contest-standings-import';
 
-const ENTRY_NAME_TO_TEST_USER_SLUG: Record<string, string> = {
-  // Keep empty by default; current test users intentionally match CSV entry names.
-};
+const ENTRY_NAME_TO_TEST_USER_SLUG: Record<string, string> = Object.fromEntries(
+  TEST_USER_DIRECTORY.map((user) => [user.entryName.trim().toLowerCase(), user.userSlug])
+);
 
 const TEST_USERS_BY_SLUG = new Map(TEST_USERS.map((user) => [user.id, user]));
 
