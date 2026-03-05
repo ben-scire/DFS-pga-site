@@ -15,10 +15,11 @@ import {
 } from '@/lib/firestore-live-scores';
 import {
   isFirestoreLineupStorageAvailable,
-  loadContestLineups,
-  subscribeToContestLineups,
+  loadTestLineup,
+  subscribeToTestLineup,
 } from '@/lib/firestore-lineups';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
+import { TEST_USERS } from '@/lib/test-users';
 import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool } from '@/lib/weekly-lineup-storage';
 
@@ -150,49 +151,66 @@ function WeekStandingsContent() {
     }
 
     let cancelled = false;
+    const entriesByUser = new Map<string, LeaderboardLineupEntry>();
 
     void (async () => {
       try {
-        const serverEntries = await loadContestLineups(contestId, { source: 'server' });
-        if (cancelled) return;
-        setLineups(
-          serverEntries
-            .filter((entry) => entry.lineupGolferIds.length > 0)
-            .map((entry) => ({
-              userKey: entry.userKey,
-              userDisplayName: entry.userDisplayName || entry.userKey,
-              lineupGolferIds: entry.lineupGolferIds,
-            }))
+        const serverEntries = await Promise.all(
+          TEST_USERS.map(async (user) => ({
+            user,
+            entry: await loadTestLineup(contestId, user.id, { source: 'server' }),
+          }))
         );
+        if (cancelled) return;
+
+        for (const row of serverEntries) {
+          const { user, entry } = row;
+          if (!entry || !entry.lineupGolferIds.length) {
+            entriesByUser.delete(user.id);
+            continue;
+          }
+          entriesByUser.set(user.id, {
+            userKey: user.id,
+            userDisplayName: entry.userDisplayName || user.name,
+            lineupGolferIds: entry.lineupGolferIds,
+          });
+        }
+        setLineups(Array.from(entriesByUser.values()));
         setLineupStatus('live');
       } catch {
         if (!cancelled) setLineupStatus('error');
       }
     })();
 
-    const unsubscribe = subscribeToContestLineups(
-      contestId,
-      (entries) => {
-        if (cancelled) return;
-        setLineups(
-          entries
-            .filter((entry) => entry.lineupGolferIds.length > 0)
-            .map((entry) => ({
-              userKey: entry.userKey,
-              userDisplayName: entry.userDisplayName || entry.userKey,
+    const unsubscribes = TEST_USERS.map((user) =>
+      subscribeToTestLineup(
+        contestId,
+        user.id,
+        (entry) => {
+          if (cancelled) return;
+          if (!entry || !entry.lineupGolferIds.length) {
+            entriesByUser.delete(user.id);
+          } else {
+            entriesByUser.set(user.id, {
+              userKey: user.id,
+              userDisplayName: entry.userDisplayName || user.name,
               lineupGolferIds: entry.lineupGolferIds,
-            }))
-        );
-        setLineupStatus('live');
-      },
-      () => {
-        if (!cancelled) setLineupStatus('error');
-      }
+            });
+          }
+          setLineups(Array.from(entriesByUser.values()));
+          setLineupStatus('live');
+        },
+        () => {
+          if (!cancelled) setLineupStatus('error');
+        }
+      )
     );
 
     return () => {
       cancelled = true;
-      unsubscribe();
+      for (const unsubscribe of unsubscribes) {
+        unsubscribe();
+      }
     };
   }, [contestId]);
 
