@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 if ! command -v gcloud >/dev/null 2>&1; then
   echo "gcloud is required but not found. Install Google Cloud SDK first."
   exit 1
@@ -140,7 +143,7 @@ EOF
 gcloud builds submit \
   --project "${PROJECT_ID}" \
   --config "${TMP_CLOUDBUILD}" \
-  .
+  "${REPO_DIR}"
 
 echo "Deploying Cloud Run Job..."
 gcloud run jobs deploy "${JOB_NAME}" \
