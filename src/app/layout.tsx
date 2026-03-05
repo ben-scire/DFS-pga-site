@@ -2,9 +2,36 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
+const SITE_TITLE = 'PGA-DK-Challenge';
+const SITE_DESCRIPTION = 'Live tracking for DraftKings DFS custom PGA contests.';
+const SITE_URL = 'https://ben-scire.github.io';
+const PREVIEW_IMAGE_URL = `${SITE_URL}/og-card.png`;
+
 export const metadata: Metadata = {
-  title: '5x5 Global',
-  description: 'Live tracking for DraftKings DFS custom PGA contests.',
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_TITLE,
+    images: [
+      {
+        url: PREVIEW_IMAGE_URL,
+        width: 1200,
+        height: 630,
+        alt: SITE_TITLE,
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [PREVIEW_IMAGE_URL],
+  },
 };
 
 export default function RootLayout({
