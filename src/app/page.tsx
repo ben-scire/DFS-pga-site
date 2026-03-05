@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { Logo } from '@/components/logo';
 import { KeyRound } from 'lucide-react';
 import { signInOrFirstClaim, subscribeAuthSession } from '@/lib/firebase-auth';
@@ -14,6 +15,8 @@ import { toast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const router = useRouter();
+  const defaultContestId = WEEKLY_CONTESTS[0]?.id ?? 'week-2-arnold-palmer';
+  const defaultStandingsPath = `/week-standings?contestId=${encodeURIComponent(defaultContestId)}`;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -23,7 +26,7 @@ export default function LoginPage() {
   useEffect(() => {
     const unsubscribe = subscribeAuthSession((session) => {
       if (session) {
-        router.replace('/contests');
+        router.replace(defaultStandingsPath);
         return;
       }
       setCheckingSession(false);
@@ -32,7 +35,7 @@ export default function LoginPage() {
     return () => {
       unsubscribe();
     };
-  }, [router]);
+  }, [defaultStandingsPath, router]);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -41,7 +44,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await signInOrFirstClaim(username, password);
-      router.replace('/contests');
+      router.replace(defaultStandingsPath);
     } catch (error) {
       toast({
         title: 'Sign-in failed',
