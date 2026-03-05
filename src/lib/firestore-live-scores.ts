@@ -1,5 +1,7 @@
 import {
   collection,
+  getDocs,
+  getDocsFromServer,
   onSnapshot,
   type QueryDocumentSnapshot,
   type Unsubscribe,
@@ -77,6 +79,34 @@ export function getTestScoresCollectionRef(contestId: string) {
   return collection(db, 'test_scores', contestId, 'golfers');
 }
 
+export async function loadTestGolferScores(
+  contestId: string,
+  options?: { source?: 'default' | 'server' }
+): Promise<Record<string, TestGolferLiveScore>> {
+  const ref = getTestScoresCollectionRef(contestId);
+  if (!ref) return {};
+
+  let snap;
+  if (options?.source === 'server') {
+    try {
+      snap = await getDocsFromServer(ref);
+    } catch {
+      // Fall back so the UI still renders when server-only fetch fails.
+      snap = await getDocs(ref);
+    }
+  } else {
+    snap = await getDocs(ref);
+  }
+
+  const next: Record<string, TestGolferLiveScore> = {};
+  for (const docSnap of snap.docs) {
+    const parsed = parseScoreDoc(docSnap);
+    if (!parsed) continue;
+    next[parsed.golferId] = parsed;
+  }
+  return next;
+}
+
 export function subscribeToTestGolferScores(
   contestId: string,
   onScores: (scoresByGolferId: Record<string, TestGolferLiveScore>) => void,
@@ -104,4 +134,3 @@ export function subscribeToTestGolferScores(
     }
   );
 }
-
