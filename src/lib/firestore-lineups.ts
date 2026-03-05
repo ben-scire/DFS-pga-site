@@ -2,6 +2,9 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromServer,
+  getDocs,
+  getDocsFromServer,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -94,16 +97,54 @@ export function getTestLineupsCollectionRef(contestId: string) {
 
 export async function loadTestLineup(
   contestId: string,
-  userSlug: string
+  userSlug: string,
+  options?: { source?: 'default' | 'server' }
 ): Promise<PersistedLineupEntry | null> {
   const ref = getTestLineupDocRef(contestId, userSlug);
   if (!ref) return null;
 
-  const snap = await getDoc(ref);
+  let snap;
+  if (options?.source === 'server') {
+    try {
+      snap = await getDocFromServer(ref);
+    } catch {
+      snap = await getDoc(ref);
+    }
+  } else {
+    snap = await getDoc(ref);
+  }
+
   if (!snap.exists()) return null;
   const data = snap.data();
   if (!isValidLineupDoc(data)) return null;
   return toPersistedEntry(data);
+}
+
+export async function loadContestLineups(
+  contestId: string,
+  options?: { source?: 'default' | 'server' }
+): Promise<ContestLineupEntry[]> {
+  const ref = getTestLineupsCollectionRef(contestId);
+  if (!ref) return [];
+
+  let snap;
+  if (options?.source === 'server') {
+    try {
+      snap = await getDocsFromServer(ref);
+    } catch {
+      snap = await getDocs(ref);
+    }
+  } else {
+    snap = await getDocs(ref);
+  }
+
+  const entries: ContestLineupEntry[] = [];
+  for (const docSnap of snap.docs) {
+    const parsed = parseContestLineupDoc(docSnap);
+    if (!parsed) continue;
+    entries.push(parsed);
+  }
+  return entries;
 }
 
 export async function saveTestLineup(
