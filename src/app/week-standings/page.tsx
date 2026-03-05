@@ -57,7 +57,8 @@ function WeekStandingsContent() {
 
   const contest = getWeeklyContestById(contestId);
   const contestName = contest?.name ?? getContestLabel(contestId);
-  const hideLineupPlayerNames = contest ? Date.now() < new Date(contest.lockAtIso).getTime() : false;
+  const isAdmin = session?.isAdmin ?? false;
+  const hideLineupPlayerNames = !isAdmin && (contest ? Date.now() < new Date(contest.lockAtIso).getTime() : false);
   const viewerUserId = session?.userSlug ?? 'guest';
   const contestOptions = useMemo(() => {
     const ids = [contestId, ...WEEKLY_CONTESTS.map((item) => item.id)];
