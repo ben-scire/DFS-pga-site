@@ -234,66 +234,66 @@ function LiveLineupContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#e4e4e4] text-zinc-900">
+    <div className="min-h-screen bg-[#080c13] text-zinc-100">
       <div className="mx-auto max-w-3xl">
-        <header className="sticky top-0 z-10 bg-black text-white">
+        <header className="sticky top-0 z-10 border-b border-cyan-300/15 bg-[#05080f] text-white">
           <div className="flex items-center justify-between px-4 py-3">
             <Link href={`/week-standings?contestId=${contestId}`} className="inline-flex h-8 w-8 items-center justify-center">
               <ArrowLeft className="h-6 w-6" />
             </Link>
-            <h1 className="text-2xl font-semibold">Entry Details</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Entry Details</h1>
             <div className="h-8 w-8" />
           </div>
-          <div className="bg-zinc-800 px-4 py-2 text-center text-sm uppercase tracking-wide text-zinc-200">Golf | Classic</div>
+          <div className="bg-[#20232b] px-4 py-2 text-center text-sm uppercase tracking-[0.12em] text-zinc-200">Golf | Classic</div>
         </header>
 
-        <section className="border-b border-zinc-300 bg-[#f3f3f3] px-4 py-4">
+        <section className="border-b border-cyan-300/15 bg-gradient-to-r from-[#0e1a2f] to-[#0f2c2a] px-4 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="truncate text-3xl font-bold">{lineupUserName}</p>
-              <p className="mt-1 text-sm text-zinc-600">{contest.name}</p>
+              <p className="mt-1 text-sm text-cyan-100/70">{contest.name}</p>
             </div>
             <div className="text-right">
-              <p className="text-4xl font-bold leading-none">{lineupLiveStats.totalLivePoints.toFixed(2)}</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-600">PHR ({lineupLiveStats.totalHolesRemaining})</p>
+              <p className="text-4xl font-bold leading-none text-emerald-300">{lineupLiveStats.totalLivePoints.toFixed(2)}</p>
+              <p className="mt-1 text-sm font-semibold text-cyan-100/70">PHR ({lineupLiveStats.totalHolesRemaining})</p>
             </div>
           </div>
         </section>
 
         {lineupGolfers.length ? (
-          <div className="divide-y divide-zinc-300">
+          <div className="divide-y divide-cyan-200/10">
             {lineupLiveStats.rows.map(({ golfer, score }) => (
-              <article key={golfer.golferId} className="bg-[#f6f6f6] px-3 py-3">
+              <article key={golfer.golferId} className="bg-[#101722] px-3 py-3">
                 <div className="flex items-start gap-3">
-                  <div className="pt-1 text-lg font-bold leading-none text-zinc-800">G</div>
+                  <div className="pt-1 text-lg font-bold leading-none text-cyan-200">G</div>
                   <img
                     src={golfer.headshotUrl}
                     alt={golfer.name}
-                    className="h-20 w-20 shrink-0 rounded object-cover bg-zinc-200"
+                    className="h-20 w-20 shrink-0 rounded-md border border-cyan-200/20 object-cover bg-[#0a111d]"
                     loading="lazy"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-2xl font-medium leading-tight text-zinc-900">{golfer.name}</p>
-                    <p className="mt-1 text-2xl leading-tight text-zinc-800">
+                    <p className="truncate text-2xl font-semibold leading-tight text-zinc-100">{golfer.name}</p>
+                    <p className="mt-1 text-2xl leading-tight text-zinc-200">
                       POS {formatPosition(score?.position)} ({formatToPar(score?.scoreToPar)})
                     </p>
-                    <p className="mt-1 text-sm text-zinc-600">
+                    <p className="mt-1 text-sm text-zinc-400">
                       {score?.thru !== undefined ? `Thru ${score.thru}` : 'Pre-round'} ·{' '}
                       {score?.status ? score.status.toUpperCase() : golfer.teeTimeDisplay ?? '--'}
                     </p>
                   </div>
-                  <div className="min-w-[96px] border-l border-zinc-300 pl-3 text-right">
-                    <p className="text-5xl font-semibold leading-none text-zinc-900">
+                  <div className="min-w-[96px] border-l border-cyan-200/15 pl-3 text-right">
+                    <p className="text-4xl font-semibold leading-none text-zinc-100">
                       {typeof score?.fantasyPoints === 'number' ? score.fantasyPoints.toFixed(2) : '--'}
                     </p>
-                    <p className="mt-1 text-xs font-medium text-zinc-500">PTS</p>
+                    <p className="mt-1 text-xs font-medium text-cyan-100/65">PTS</p>
                   </div>
                 </div>
               </article>
             ))}
           </div>
         ) : (
-          <div className="px-4 py-8 text-center text-sm text-zinc-600">No lineup saved for this user yet.</div>
+          <div className="px-4 py-8 text-center text-sm text-zinc-400">No lineup saved for this user yet.</div>
         )}
       </div>
     </div>
