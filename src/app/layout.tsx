@@ -5,7 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 const SITE_TITLE = 'PGA-DK-Challenge';
 const SITE_DESCRIPTION = 'Live tracking for DraftKings DFS custom PGA contests.';
 const SITE_URL = 'https://ben-scire.github.io';
-const PREVIEW_IMAGE_URL = `${SITE_URL}/og-card.png`;
+const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1] || '';
+const githubPagesBasePath = process.env.GITHUB_ACTIONS === 'true' && repositoryName ? `/${repositoryName}` : '';
+const PREVIEW_IMAGE_URL = `${SITE_URL}${githubPagesBasePath}/og-card.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
