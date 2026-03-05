@@ -3,7 +3,7 @@
     {
       "id": "golf-course",
       "description": "Golden-hour golf course with championship badge",
-      "imageUrl": "/og-card.png",
+      "imageUrl": "og-card.png",
       "imageHint": "golf sunset"
     }
   ]
