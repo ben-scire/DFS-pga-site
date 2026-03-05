@@ -32,25 +32,25 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 CHAMPIONSHIP_POINTS_BY_TIER = {
-    "Standard": [30, 24, 20, 17, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1, 1],
-    "Signature": [40, 32, 26, 22, 18, 15, 13, 11, 9, 8, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1],
-    "Major": [50, 40, 33, 27, 22, 18, 15, 13, 11, 10, 8, 7, 6, 5, 4, 3, 2, 2, 1, 1],
+    "Standard": [30, 24, 20, 17, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1],
+    "Signature": [40, 32, 26, 22, 18, 15, 13, 11, 9, 8, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1, 1, 1],
+    "Major": [50, 40, 33, 27, 22, 18, 15, 13, 11, 10, 8, 7, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1],
 }
 
 WEEKLY_FEE = 10
 FIRST_WEEK_OF_QUARTER_FEE = 60
 
-# Fixed-dollar payouts for a 20-player pool.
+# Fixed-dollar payouts for a 22-player pool.
 # If active player count changes, payouts scale proportionally.
-BASE_POOL_SIZE = 20
+BASE_POOL_SIZE = 22
 
 WEEKLY_PAYOUTS = {
-    "Standard":  [60, 50, 40, 20],         # $170 pot (top 4)
-    "Signature": [100, 40, 30, 20, 10],     # $200 pot (top 5)
-    "Major":     [110, 45, 20, 15, 10],     # $200 pot (top 5)
+    "Standard": [75, 50, 40, 25],
+    "Signature": [105, 50, 35, 20, 10],
+    "Major": [115, 55, 25, 15, 10],
 }
 
-QUARTERLY_PAYOUTS = [500, 250, 125, 75, 50]  # $1,000 pot (top 5)
+QUARTERLY_PAYOUTS = [550, 275, 135, 85, 55]
 
 
 @dataclass
@@ -247,12 +247,33 @@ def _load_entry_user_map(league_dir: Path) -> Dict[str, Dict[str, str]]:
     return result
 
 
+def _load_all_entries(league_dir: Path) -> List[Dict[str, str]]:
+    """Load all configured entries so late joiners can appear with zero totals."""
+    path = league_dir / "entry-users.json"
+    if not path.exists():
+        return []
+    users = json.loads(path.read_text(encoding="utf-8"))
+    all_entries: List[Dict[str, str]] = []
+    for user in users:
+        entry_name = str(user.get("entryName") or "").strip()
+        if not entry_name:
+            continue
+        all_entries.append(
+            {
+                "entryId": entry_name.lower().replace(" ", "-"),
+                "entryName": entry_name,
+            }
+        )
+    return all_entries
+
+
 # ---------------------------------------------------------------------------
 # Ranking / standings computation  (unchanged logic)
 # ---------------------------------------------------------------------------
 
 def rank_entries(entries: List[Dict]) -> List[Dict]:
-    sorted_rows = sorted(entries, key=lambda r: r["weeklyFantasyPoints"], reverse=True)
+    eligible_rows = [r for r in entries if not bool(r.get("noRank"))]
+    sorted_rows = sorted(eligible_rows, key=lambda r: r["weeklyFantasyPoints"], reverse=True)
     ranked = []
     rank = 1
     last = None
@@ -296,7 +317,11 @@ def load_weekly_files(weekly_dir: Path) -> List[Tuple[int, Dict]]:
     return rows
 
 
-def compute_standings(schedule: List[ScheduleEvent], weekly_data: List[Tuple[int, Dict]]) -> List[Dict]:
+def compute_standings(
+    schedule: List[ScheduleEvent],
+    weekly_data: List[Tuple[int, Dict]],
+    all_entries: Optional[List[Dict[str, str]]] = None,
+) -> List[Dict]:
     event_by_id = {e.id: e for e in schedule}
 
     first_week_ids = set()
@@ -319,6 +344,11 @@ def compute_standings(schedule: List[ScheduleEvent], weekly_data: List[Tuple[int
         }
     )
 
+    for seed in all_entries or []:
+        rec = by_entry[seed["entryId"]]
+        rec["entryId"] = seed["entryId"]
+        rec["entryName"] = seed["entryName"]
+
     present_event_ids = {event_id for event_id, _ in weekly_data}
 
     for event_id, weekly in weekly_data:
@@ -327,7 +357,9 @@ def compute_standings(schedule: List[ScheduleEvent], weekly_data: List[Tuple[int
         entries = weekly.get("entries", [])
         ranked = rank_entries(entries)
 
-        n = len(entries)
+        n = len(ranked)
+        if n == 0:
+            continue
         fee_per_user = FIRST_WEEK_OF_QUARTER_FEE if event_id in first_week_ids else WEEKLY_FEE
         scale = n / BASE_POOL_SIZE
         base_payouts = WEEKLY_PAYOUTS.get(tier, WEEKLY_PAYOUTS["Standard"])
@@ -373,7 +405,7 @@ def compute_standings(schedule: List[ScheduleEvent], weekly_data: List[Tuple[int
             event = event_by_id.get(eid)
             tier = event.tier if event else "Standard"
             ranked = rank_entries(weekly.get("entries", []))
-            active_players = max(active_players, len(weekly.get("entries", [])))
+            active_players = max(active_players, len(ranked))
             for row in ranked:
                 rnk = row["rank"]
                 points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
@@ -460,7 +492,8 @@ def _run_official_mode(league_dir: Path, schedule: List[ScheduleEvent]) -> None:
         print("No weekly-scores/*.json files found. Nothing to do.")
         return
 
-    standings = compute_standings(schedule, weekly_data)
+    all_entries = _load_all_entries(league_dir)
+    standings = compute_standings(schedule, weekly_data, all_entries=all_entries)
     standings_path = league_dir / "season-standings.json"
     standings_path.write_text(json.dumps(standings, indent=2), encoding="utf-8")
     print(f"Wrote {standings_path}  ({len(standings)} entries)")
@@ -489,7 +522,8 @@ def _run_ben_mode(
     print(f"Wrote {weekly_path}  ({len(entries)} entries)")
 
     weekly_data = load_weekly_files(ben_dir)
-    standings = compute_standings(schedule, weekly_data)
+    all_entries = _load_all_entries(league_dir)
+    standings = compute_standings(schedule, weekly_data, all_entries=all_entries)
     standings_path = league_dir / "ben-standings.json"
     standings_path.write_text(json.dumps(standings, indent=2), encoding="utf-8")
     print(f"Wrote {standings_path}  ({len(standings)} entries)")

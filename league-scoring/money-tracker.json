@@ -21,6 +21,8 @@
     { "entryName": "tomlinsonj15", "preferredName": "Jay", "week1Paid": true, "quarter1Paid": false, "totalPaid": 10 },
     { "entryName": "jpetruney", "preferredName": "Petruney", "week1Paid": true, "quarter1Paid": false, "totalPaid": 10 },
     { "entryName": "unccle neal", "preferredName": "Uncle Neal", "week1Paid": true, "quarter1Paid": true, "totalPaid": 60 },
-    { "entryName": "bscire", "preferredName": "Ben", "week1Paid": true, "quarter1Paid": false, "totalPaid": 10 }
+    { "entryName": "bscire", "preferredName": "Ben", "week1Paid": true, "quarter1Paid": false, "totalPaid": 10 },
+    { "entryName": "yimmerdoe", "preferredName": "Yimmer", "week1Paid": false, "quarter1Paid": false, "totalPaid": 0 },
+    { "entryName": "amac", "preferredName": "Amac", "week1Paid": false, "quarter1Paid": false, "totalPaid": 0 }
   ]
 }

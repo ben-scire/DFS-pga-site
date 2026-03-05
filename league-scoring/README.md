@@ -2,35 +2,35 @@ Fantasy golf league scoring and standings. The league allows players to opt out 
 
 ## The Payouts
 
-All dollar amounts below are based on a **20-player pool**. If the active player count changes, all payouts (weekly, quarterly, and season-long) scale proportionally.
+All dollar amounts below are based on a **22-player pool**. If the active player count changes, all payouts (weekly, quarterly, and season-long) scale proportionally.
 
-### Weekly Pots (Total: $5,010 over 27 events)
+### Weekly Pots
 
 | Tier | Pot | 1st | 2nd | 3rd | 4th | 5th |
 |------|-----|-----|-----|-----|-----|-----|
-| Standard | $170 | $60 | $50 | $40 | $20 | — |
-| Signature | $200 | $100 | $40 | $30 | $20 | $10 |
-| Major | $200 | $110 | $45 | $20 | $15 | $10 |
+| Standard | $190 | $75 | $50 | $40 | $25 | — |
+| Signature | $220 | $105 | $50 | $35 | $20 | $10 |
+| Major | $220 | $115 | $55 | $25 | $15 | $10 |
 
 - Weekly buy-in: $10/player
-- Standard weeks skim $30 from the pot to fund the Season-Long Overall prize. The remaining $170 is distributed to the top 4.
-- Signature and Major weeks pay out the full $200 to the top 5 (no skim).
+- Standard weeks skim $30 from the pot to fund the Season-Long Overall prize. The remaining $190 is distributed to the top 4.
+- Signature and Major weeks pay out the full $220 to the top 5 (no skim).
 
-### Quarterly "Chunk" Pots (Total: $4,000)
+### Quarterly "Chunk" Pots
 
 Paid out 4 times a year (Masters, PGA, Travelers, Tour Championship).
 
 | 1st | 2nd | 3rd | 4th | 5th |
 |-----|-----|-----|-----|-----|
-| $500 | $250 | $125 | $75 | $50 |
+| $550 | $275 | $135 | $85 | $55 |
 
 - Quarterly buy-in: $50/player
 
-### Season-Long Overall (Total: $390)
+### Season-Long Overall (Total: $480)
 
 | 1st | 2nd |
 |-----|-----|
-| $290 | $100 |
+| $350 | $130 |
 
 ### Opt-Out Consequence
 
@@ -63,9 +63,9 @@ The only required input is **weekly scores** (fantasy points per entrant per eve
 2. **Schedule** — `schedule.json` maps event id → tier (Standard/Signature/Major) and quarter for payout rules and major multiplier.
 3. **Payout rules** — Above (weekly pot, skim, top 4/5; quarterly pot, top 5). Net $ = winnings minus $10 per week and $50 per quarter paid in.
 4. **Championship points** — Rank by `weeklyFantasyPoints` each week and apply the league finish-points matrix:
-   - Major (2.5x): `50,40,33,27,22,18,15,13,11,10,8,7,6,5,4,3,2,2,1,1`
-   - Signature (2x): `40,32,26,22,18,15,13,11,9,8,6,5,4,3,2,2,1,1,1,1`
-   - Standard (1.5x): `30,24,20,17,14,12,10,8,7,6,5,4,3,2,2,1,1,1,1,1`
+   - Major (2.5x): `50,40,33,27,22,18,15,13,11,10,8,7,6,5,4,3,2,2,1,1,1,1`
+   - Signature (2x): `40,32,26,22,18,15,13,11,9,8,6,5,4,3,2,2,1,1,1,1,1,1`
+   - Standard (1.5x): `30,24,20,17,14,12,10,8,7,6,5,4,3,2,2,1,1,1,1,1,1,1`
 
 ## Data files
 

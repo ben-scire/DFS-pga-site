@@ -140,6 +140,20 @@
       "isActive": true,
       "eligibleForSeasonLong": true,
       "optedOutQuarter": null
+    },
+    {
+      "entryName": "yimmerdoe",
+      "preferredName": "Yimmer",
+      "isActive": true,
+      "eligibleForSeasonLong": true,
+      "optedOutQuarter": null
+    },
+    {
+      "entryName": "amac",
+      "preferredName": "Amac",
+      "isActive": true,
+      "eligibleForSeasonLong": true,
+      "optedOutQuarter": null
     }
   ]
 }
