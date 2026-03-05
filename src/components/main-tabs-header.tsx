@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { signOutAuthSession, type AuthSession } from '@/lib/firebase-auth';
+import { getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import { cn } from '@/lib/utils';
 
 type MainTabKey = 'home' | 'lineup' | 'week-standings' | 'season' | 'admin';
@@ -16,8 +17,17 @@ interface MainTabsHeaderProps {
 }
 
 function tabHref(tab: MainTabKey, contestId: string): string {
+  const contest = getWeeklyContestById(contestId);
+  const contestLiveByStatus = contest?.status === 'live' || contest?.status === 'final';
+  const contestLiveByLock = contest ? Date.now() >= new Date(contest.lockAtIso).getTime() : false;
+  const useLiveLineup = contestLiveByStatus || contestLiveByLock;
+
   if (tab === 'home') return `/contests?contestId=${encodeURIComponent(contestId)}`;
-  if (tab === 'lineup') return `/lineup?contestId=${encodeURIComponent(contestId)}`;
+  if (tab === 'lineup') {
+    return useLiveLineup
+      ? `/live-lineup?contestId=${encodeURIComponent(contestId)}`
+      : `/lineup?contestId=${encodeURIComponent(contestId)}`;
+  }
   if (tab === 'week-standings') return `/week-standings?contestId=${encodeURIComponent(contestId)}`;
   if (tab === 'season') return '/season';
   return '/admin';
