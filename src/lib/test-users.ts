@@ -16,7 +16,7 @@ export interface TestUserDirectoryEntry {
   alias: string;
 }
 
-const EXPECTED_TEST_USER_COUNT = 20;
+const EXPECTED_TEST_USER_COUNT = 22;
 
 function toUserSlug(entryName: string): string {
   return entryName.trim().toLowerCase().replace(/\s+/g, '-');
