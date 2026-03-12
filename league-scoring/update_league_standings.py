@@ -8,7 +8,13 @@ Default (no flags):
     Recompute standings from weekly-scores/*.json and write season-standings.json.
     No network access required.
 
---ben:
+--contest-id <id>:
+    Pull lineups and scores from Firestore for the given contest, write
+    weekly-scores/{contestId}.json, then recompute season-standings.json.
+    Requires GOOGLE_APPLICATION_CREDENTIALS pointing to a Firebase
+    service account JSON key (set in .env or as an env var).
+
+--ben --contest-id <id>:
     Fetch scores from the DFS API for a contest, write to
     ben-weekly-scores/{contestId}.json, then compute standings from all
     ben-weekly-scores/*.json and write ben-standings.json.
@@ -247,6 +253,93 @@ def _load_entry_user_map(league_dir: Path) -> Dict[str, Dict[str, str]]:
     return result
 
 
+# ---------------------------------------------------------------------------
+# Firestore fetching
+# ---------------------------------------------------------------------------
+
+def _resolve_credentials_path() -> Optional[str]:
+    """Return the service account JSON path, or None if not configured."""
+    cred = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+    if cred:
+        p = Path(cred)
+        if not p.is_absolute():
+            for base in (Path.cwd(), Path.cwd().parent):
+                candidate = base / cred
+                if candidate.exists():
+                    return str(candidate.resolve())
+        return cred
+    sa_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
+    if sa_json:
+        return None  # inline JSON, handled by caller
+    return None
+
+
+def fetch_weekly_entries_from_firestore(contest_id: str) -> List[Dict]:
+    """Pull lineups + golfer scores from Firestore and compute fantasy totals."""
+    try:
+        from google.cloud import firestore as gc_firestore
+    except ImportError:
+        raise RuntimeError(
+            "google-cloud-firestore is not installed.\n"
+            "Run: pip install google-cloud-firestore google-auth"
+        )
+
+    cred_path = _resolve_credentials_path()
+    if cred_path:
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
+
+    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") and not os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON"):
+        raise RuntimeError(
+            "No Firebase credentials found.\n"
+            "Set GOOGLE_APPLICATION_CREDENTIALS=./your-service-account.json in .env"
+        )
+
+    import warnings
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore")
+        db = gc_firestore.Client()
+
+    print(f"Reading Firestore: test_scores/{contest_id}/golfers ...")
+    scores_ref = db.collection("test_scores").document(contest_id).collection("golfers")
+    golfer_pts: Dict[str, float] = {}
+    for snap in scores_ref.stream():
+        data = snap.to_dict()
+        fp = data.get("fantasyPoints", 0)
+        golfer_pts[snap.id] = float(fp) if fp is not None else 0.0
+
+    if not golfer_pts:
+        raise RuntimeError(
+            f"No golfer scores found in test_scores/{contest_id}/golfers.\n"
+            "Has the tournament data been synced to Firestore?"
+        )
+    print(f"  Found {len(golfer_pts)} golfer scores")
+
+    print(f"Reading Firestore: test_lineups/{contest_id}/entries ...")
+    entries_ref = db.collection("test_lineups").document(contest_id).collection("entries")
+    results: List[Dict] = []
+    for snap in entries_ref.stream():
+        data = snap.to_dict()
+        entry_id = snap.id
+        entry_name = data.get("entryName") or entry_id
+        lineup_ids = data.get("lineupGolferIds", [])
+        total = sum(golfer_pts.get(gid, 0.0) for gid in lineup_ids)
+        results.append({
+            "entryId": entry_id,
+            "entryName": entry_name if entry_name else entry_id,
+            "weeklyFantasyPoints": round(total, 1),
+        })
+
+    if not results:
+        raise RuntimeError(
+            f"No lineup entries found in test_lineups/{contest_id}/entries.\n"
+            "Has this contest been set up in Firestore?"
+        )
+
+    results.sort(key=lambda r: r["weeklyFantasyPoints"], reverse=True)
+    print(f"  Found {len(results)} entries")
+    return results
+
+
 def _load_all_entries(league_dir: Path) -> List[Dict[str, str]]:
     """Load all configured entries so late joiners can appear with zero totals."""
     path = league_dir / "entry-users.json"
@@ -365,6 +458,10 @@ def compute_standings(
         base_payouts = WEEKLY_PAYOUTS.get(tier, WEEKLY_PAYOUTS["Standard"])
         payouts = [int(p * scale) for p in base_payouts]
 
+        tie_groups: Dict[int, List[int]] = defaultdict(list)
+        for i, row in enumerate(ranked):
+            tie_groups[row["rank"]].append(i)
+
         for i, row in enumerate(ranked):
             entry_id = row["entryId"]
             rec = by_entry[entry_id]
@@ -375,13 +472,24 @@ def compute_standings(
             rec["fees"] += fee_per_user
 
             rnk = row["rank"]
+            group_indices = tie_groups[rnk]
+            group_size = len(group_indices)
+
             points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
-            base = points_table[rnk - 1] if 1 <= rnk <= len(points_table) else 0
-            rec["championshipPoints"] += base
+            pts_sum = sum(
+                points_table[idx] if idx < len(points_table) else 0
+                for idx in group_indices
+            )
+            rec["championshipPoints"] += pts_sum / group_size
+
+            pay_sum = sum(
+                payouts[idx] if idx < len(payouts) else 0
+                for idx in group_indices
+            )
+            rec["weeklyPayouts"] += pay_sum / group_size
+
             if rnk == 1:
                 rec["weeklyWins"] += 1
-            if i < len(payouts):
-                rec["weeklyPayouts"] += payouts[i]
 
     events_by_quarter: Dict[int, List[int]] = defaultdict(list)
     quarter_finale_by_q: Dict[int, int] = {}
@@ -406,11 +514,19 @@ def compute_standings(
             tier = event.tier if event else "Standard"
             ranked = rank_entries(weekly.get("entries", []))
             active_players = max(active_players, len(ranked))
+            q_tie_groups: Dict[int, List[int]] = defaultdict(list)
+            for idx, row in enumerate(ranked):
+                q_tie_groups[row["rank"]].append(idx)
             for row in ranked:
                 rnk = row["rank"]
+                group_indices = q_tie_groups[rnk]
+                group_size = len(group_indices)
                 points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
-                base = points_table[rnk - 1] if 1 <= rnk <= len(points_table) else 0
-                quarter_points[row["entryId"]] += base
+                pts_sum = sum(
+                    points_table[idx] if idx < len(points_table) else 0
+                    for idx in group_indices
+                )
+                quarter_points[row["entryId"]] += pts_sum / group_size
 
         quarter_sorted = sorted(quarter_points.items(), key=lambda it: it[1], reverse=True)
         q_scale = active_players / BASE_POOL_SIZE
@@ -432,8 +548,8 @@ def compute_standings(
                 "rank": 0,
                 "entryId": rec["entryId"],
                 "entryName": rec["entryName"],
-                "championshipPoints": int(rec["championshipPoints"]),
-                "netDollars": round(rec["weeklyPayouts"] - rec["fees"]),
+                "championshipPoints": rec["championshipPoints"] if rec["championshipPoints"] % 1 else int(rec["championshipPoints"]),
+                "netDollars": round(rec["weeklyPayouts"] - rec["fees"], 2),
                 "weeklyFantasyPointsTotal": round(rec["weeklyFantasyPointsTotal"], 1),
                 "totalPointsScored": round(rec["weeklyFantasyPointsTotal"], 1),
                 "weeklyWins": int(rec["weeklyWins"]),
@@ -464,13 +580,16 @@ def compute_standings(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Recompute league standings, optionally fetching Ben's API scores."
+        description="Recompute league standings. Use --contest-id to pull from Firestore first."
+    )
+    parser.add_argument(
+        "--contest-id", default=None,
+        help="Contest id (e.g. week-3-players). Pulls scores from Firestore, writes weekly JSON, recomputes standings.",
     )
     parser.add_argument(
         "--ben", action="store_true",
-        help="Fetch from DFS API and write to ben-weekly-scores/ + ben-standings.json",
+        help="Fetch from DFS API instead of Firestore (writes to ben-weekly-scores/ + ben-standings.json)",
     )
-    parser.add_argument("--contest-id", default="week-1-cognizant", help="Contest id (for --ben)")
     parser.add_argument("--event-id", type=int, default=None, help="Override schedule event id")
     args = parser.parse_args()
 
@@ -479,7 +598,11 @@ def main() -> None:
     schedule = load_schedule(league_dir)
 
     if args.ben:
+        if not args.contest_id:
+            parser.error("--ben requires --contest-id")
         _run_ben_mode(args, league_dir, schedule)
+    elif args.contest_id:
+        _run_firestore_mode(args, league_dir, schedule)
     else:
         _run_official_mode(league_dir, schedule)
 
@@ -492,6 +615,47 @@ def _run_official_mode(league_dir: Path, schedule: List[ScheduleEvent]) -> None:
         print("No weekly-scores/*.json files found. Nothing to do.")
         return
 
+    all_entries = _load_all_entries(league_dir)
+    standings = compute_standings(schedule, weekly_data, all_entries=all_entries)
+    standings_path = league_dir / "season-standings.json"
+    standings_path.write_text(json.dumps(standings, indent=2), encoding="utf-8")
+    print(f"Wrote {standings_path}  ({len(standings)} entries)")
+
+
+def _run_firestore_mode(
+    args: argparse.Namespace,
+    league_dir: Path,
+    schedule: List[ScheduleEvent],
+) -> None:
+    """Pull from Firestore, write weekly-scores/{contestId}.json, recompute standings."""
+    contest_id = args.contest_id
+    event_id = args.event_id if args.event_id is not None else infer_event_id(contest_id)
+    event = next((e for e in schedule if e.id == event_id), None)
+    if event is None:
+        raise RuntimeError(f"event id {event_id} not found in schedule.json")
+
+    entries = fetch_weekly_entries_from_firestore(contest_id)
+    if not entries:
+        raise RuntimeError("No entries returned from Firestore.")
+
+    all_known = _load_all_entries(league_dir)
+    known_ids = {e["entryId"] for e in all_known}
+    found_ids = {e["entryId"] for e in entries}
+    missing = known_ids - found_ids
+    if missing:
+        print(f"\n  WARNING: {len(missing)} known entry(s) NOT in Firestore for this contest:")
+        for m in sorted(missing):
+            print(f"    - {m}")
+        print("  If they played, add them manually to the weekly JSON before committing.\n")
+
+    weekly_dir = league_dir / "weekly-scores"
+    weekly_dir.mkdir(parents=True, exist_ok=True)
+    weekly_path = weekly_dir / f"{contest_id}.json"
+    weekly_obj = {"eventId": event.id, "eventName": event.name, "entries": entries}
+    weekly_path.write_text(json.dumps(weekly_obj, indent=2) + "\n", encoding="utf-8")
+    print(f"Wrote {weekly_path}  ({len(entries)} entries)")
+
+    weekly_data = load_weekly_files(weekly_dir)
     all_entries = _load_all_entries(league_dir)
     standings = compute_standings(schedule, weekly_data, all_entries=all_entries)
     standings_path = league_dir / "season-standings.json"
