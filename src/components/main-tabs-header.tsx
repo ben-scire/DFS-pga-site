@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { signOutAuthSession, type AuthSession } from '@/lib/firebase-auth';
-import { getWeeklyContestById } from '@/lib/weekly-lineup-seed';
+import { getDefaultContestId, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import { cn } from '@/lib/utils';
 
 type MainTabKey = 'home' | 'lineup' | 'week-standings' | 'season' | 'admin';
@@ -33,7 +33,7 @@ function tabHref(tab: MainTabKey, contestId: string): string {
   return '/admin';
 }
 
-export default function MainTabsHeader({ session, activeTab, contestId = 'week-2-arnold-palmer', className }: MainTabsHeaderProps) {
+export default function MainTabsHeader({ session, activeTab, contestId = getDefaultContestId(), className }: MainTabsHeaderProps) {
   const router = useRouter();
 
   const tabs: Array<{ key: MainTabKey; label: string; hidden?: boolean }> = [
