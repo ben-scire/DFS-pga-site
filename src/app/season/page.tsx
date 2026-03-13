@@ -9,6 +9,7 @@ import { subscribeAuthSession, type AuthSession } from '@/lib/firebase-auth';
 import standingsData from '../../../league-scoring/season-standings.json';
 import scheduleData from '../../../league-scoring/schedule.json';
 import weekOneData from '../../../league-scoring/weekly-scores/week-1-cognizant.json';
+import weekTwoData from '../../../league-scoring/weekly-scores/week-2-arnold-palmer.json';
 
 type StandingsEntry = {
   rank: number | null;
@@ -48,29 +49,61 @@ type WeeklyScoreFile = {
   entries: WeeklyScoreEntry[];
 };
 
-const SCORING_MATRIX = [
-  { finish: '1st', major: 50, signature: 40, standard: 30 },
-  { finish: '2nd', major: 40, signature: 32, standard: 24 },
-  { finish: '3rd', major: 33, signature: 26, standard: 20 },
-  { finish: '4th', major: 27, signature: 22, standard: 17 },
-  { finish: '5th', major: 22, signature: 18, standard: 14 },
-  { finish: '6th', major: 18, signature: 15, standard: 12 },
-  { finish: '7th', major: 15, signature: 13, standard: 10 },
-  { finish: '8th', major: 13, signature: 11, standard: 8 },
-  { finish: '9th', major: 11, signature: 9, standard: 7 },
-  { finish: '10th', major: 10, signature: 8, standard: 6 },
-  { finish: '11th', major: 8, signature: 6, standard: 5 },
-  { finish: '12th', major: 7, signature: 5, standard: 4 },
-  { finish: '13th', major: 6, signature: 4, standard: 3 },
-  { finish: '14th', major: 5, signature: 3, standard: 2 },
-  { finish: '15th', major: 4, signature: 2, standard: 2 },
-  { finish: '16th', major: 3, signature: 2, standard: 1 },
-  { finish: '17th', major: 2, signature: 1, standard: 1 },
-  { finish: '18th', major: 2, signature: 1, standard: 1 },
-  { finish: '19th', major: 1, signature: 1, standard: 1 },
-  { finish: '20th', major: 1, signature: 1, standard: 1 },
-  { finish: 'No Show', major: 0, signature: 0, standard: 0 },
+type ScoringCell = {
+  points: number;
+  payout?: number;
+};
+
+const SCORING_MATRIX: Array<{
+  finish: string;
+  major: ScoringCell;
+  signature: ScoringCell;
+  standard: ScoringCell;
+}> = [
+  { finish: '1st', major: { points: 50, payout: 115 }, signature: { points: 40, payout: 105 }, standard: { points: 30, payout: 75 } },
+  { finish: '2nd', major: { points: 40, payout: 55 }, signature: { points: 32, payout: 50 }, standard: { points: 24, payout: 50 } },
+  { finish: '3rd', major: { points: 33, payout: 25 }, signature: { points: 26, payout: 35 }, standard: { points: 20, payout: 40 } },
+  { finish: '4th', major: { points: 27, payout: 15 }, signature: { points: 22, payout: 20 }, standard: { points: 17, payout: 25 } },
+  { finish: '5th', major: { points: 22, payout: 10 }, signature: { points: 18, payout: 10 }, standard: { points: 14 } },
+  { finish: '6th', major: { points: 18 }, signature: { points: 15 }, standard: { points: 12 } },
+  { finish: '7th', major: { points: 15 }, signature: { points: 13 }, standard: { points: 10 } },
+  { finish: '8th', major: { points: 13 }, signature: { points: 11 }, standard: { points: 8 } },
+  { finish: '9th', major: { points: 11 }, signature: { points: 9 }, standard: { points: 7 } },
+  { finish: '10th', major: { points: 10 }, signature: { points: 8 }, standard: { points: 6 } },
+  { finish: '11th', major: { points: 8 }, signature: { points: 6 }, standard: { points: 5 } },
+  { finish: '12th', major: { points: 7 }, signature: { points: 5 }, standard: { points: 4 } },
+  { finish: '13th', major: { points: 6 }, signature: { points: 4 }, standard: { points: 3 } },
+  { finish: '14th', major: { points: 5 }, signature: { points: 3 }, standard: { points: 2 } },
+  { finish: '15th', major: { points: 4 }, signature: { points: 2 }, standard: { points: 2 } },
+  { finish: '16th', major: { points: 3 }, signature: { points: 2 }, standard: { points: 1 } },
+  { finish: '17th', major: { points: 2 }, signature: { points: 1 }, standard: { points: 1 } },
+  { finish: '18th', major: { points: 2 }, signature: { points: 1 }, standard: { points: 1 } },
+  { finish: '19th', major: { points: 1 }, signature: { points: 1 }, standard: { points: 1 } },
+  { finish: '20th', major: { points: 1 }, signature: { points: 1 }, standard: { points: 1 } },
+  { finish: 'No Show', major: { points: 0 }, signature: { points: 0 }, standard: { points: 0 } },
 ];
+
+function formatScoringCell(cell: ScoringCell) {
+  return typeof cell.payout === 'number' ? `${cell.points} ($${cell.payout})` : `${cell.points}`;
+}
+
+function getRecentWinners(weeklyScores: WeeklyScoreFile[]): RecentWinner[] {
+  return weeklyScores
+    .filter((week) => week.entries.length > 0)
+    .map((week) => {
+      const winner = week.entries
+        .slice()
+        .sort((a, b) => b.weeklyFantasyPoints - a.weeklyFantasyPoints)[0];
+
+      return {
+        week: week.eventId,
+        eventName: week.eventName,
+        winnerName: winner?.entryName ?? '--',
+        winnerScore: winner?.weeklyFantasyPoints ?? 0,
+      };
+    })
+    .sort((a, b) => b.week - a.week);
+}
 
 export default function SeasonPage() {
   const router = useRouter();
@@ -97,20 +130,13 @@ export default function SeasonPage() {
     return (b.weeklyFantasyPointsTotal ?? -1) - (a.weeklyFantasyPointsTotal ?? -1);
   });
 
-  const weekOne = weekOneData as WeeklyScoreFile;
-  const weekOneWinner = weekOne.entries
-    .slice()
-    .sort((a, b) => b.weeklyFantasyPoints - a.weeklyFantasyPoints)[0];
-  const winners: RecentWinner[] = weekOne.entries.length
-    ? [{
-      week: weekOne.eventId,
-      eventName: weekOne.eventName,
-      winnerName: weekOneWinner?.entryName ?? '--',
-      winnerScore: weekOneWinner?.weeklyFantasyPoints ?? 0,
-    }]
-    : [];
+  const weeklyScores = [weekOneData as WeeklyScoreFile, weekTwoData as WeeklyScoreFile].sort(
+    (a, b) => a.eventId - b.eventId
+  );
+  const winners = getRecentWinners(weeklyScores);
+  const latestCompletedEventId = weeklyScores.at(-1)?.eventId ?? 0;
   const upcoming = (scheduleData as ScheduleEvent[])
-    .filter((event) => event.id > weekOne.eventId)
+    .filter((event) => event.id > latestCompletedEventId)
     .slice(0, 5);
 
   if (checkingSession) {
@@ -216,18 +242,18 @@ export default function SeasonPage() {
                     <thead className="bg-white/[0.04] text-zinc-300">
                       <tr>
                         <th className="px-2 py-2 text-left">Finish</th>
-                        <th className="px-2 py-2 text-right">Major (2.5x)</th>
-                        <th className="px-2 py-2 text-right">Signature (2x)</th>
-                        <th className="px-2 py-2 text-right">Standard (1.5x)</th>
+                        <th className="px-2 py-2 text-right">Major</th>
+                        <th className="px-2 py-2 text-right">Signature</th>
+                        <th className="px-2 py-2 text-right">Standard</th>
                       </tr>
                     </thead>
                     <tbody>
                       {SCORING_MATRIX.map((row) => (
                         <tr key={row.finish} className="border-t border-white/5">
                           <td className="px-2 py-1.5 font-medium">{row.finish}</td>
-                          <td className="px-2 py-1.5 text-right">{row.major}</td>
-                          <td className="px-2 py-1.5 text-right">{row.signature}</td>
-                          <td className="px-2 py-1.5 text-right">{row.standard}</td>
+                          <td className="px-2 py-1.5 text-right">{formatScoringCell(row.major)}</td>
+                          <td className="px-2 py-1.5 text-right">{formatScoringCell(row.signature)}</td>
+                          <td className="px-2 py-1.5 text-right">{formatScoringCell(row.standard)}</td>
                         </tr>
                       ))}
                     </tbody>
