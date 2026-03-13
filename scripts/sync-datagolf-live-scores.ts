@@ -29,6 +29,8 @@ type NormalizedLiveRow = {
   status?: string;
   upstreamFantasyPoints?: number;
   scorecardFantasyPoints?: number;
+  activeRoundNumber?: number;
+  activeRoundHoles?: number;
   rawRow: GenericRow;
 };
 
@@ -122,7 +124,8 @@ async function syncOnce(input: {
   const primaryRows = parseUpstreamRows(rawBody, response.headers.get('content-type'));
   const rows = await mergeTournamentStatsRows(input.liveUrl, primaryRows);
   const normalizedRows = rows.map(normalizeLiveRow).filter((row): row is NormalizedLiveRow => Boolean(row));
-  const scoredRows = applyLivePositionPoints(normalizedRows);
+  const annotatedRows = annotateRoundStates(normalizedRows);
+  const scoredRows = applyLivePositionPoints(annotatedRows);
 
   const db = input.dryRun ? null : getFirestore();
   let matched = 0;
@@ -623,8 +626,58 @@ function normalizeLiveRow(row: GenericRow): NormalizedLiveRow | null {
       'points',
     ]),
     scorecardFantasyPoints: scorecardDerived?.fantasyPoints,
+    activeRoundNumber: scorecardDerived?.activeRoundNumber,
+    activeRoundHoles: scorecardDerived?.activeRoundHoles,
     rawRow: row,
   };
+}
+
+function annotateRoundStates(rows: NormalizedLiveRow[]): NormalizedLiveRow[] {
+  const fieldCurrentRound = rows.reduce((maxRound, row) => {
+    return Math.max(maxRound, row.activeRoundNumber ?? 0);
+  }, 0);
+
+  if (fieldCurrentRound <= 0) {
+    return rows;
+  }
+
+  return rows.map((row) => {
+    const activeRoundNumber = row.activeRoundNumber;
+    const activeRoundHoles = row.activeRoundHoles;
+    if (!activeRoundNumber || activeRoundHoles === undefined) {
+      return row;
+    }
+
+    const status = (row.status ?? '').toLowerCase();
+    const position = (row.position ?? '').toLowerCase();
+    const isTerminal =
+      status.includes('final') ||
+      status.includes('finished') ||
+      status.includes('cut') ||
+      status.includes('wd') ||
+      status.includes('dq') ||
+      position === 'cut' ||
+      position === 'wd' ||
+      position === 'dq';
+
+    if (isTerminal || activeRoundHoles < 18) {
+      return row;
+    }
+
+    if (activeRoundNumber < fieldCurrentRound) {
+      return {
+        ...row,
+        thru: `R${activeRoundNumber} F`,
+        status: `awaiting-round-${fieldCurrentRound}`,
+      };
+    }
+
+    return {
+      ...row,
+      thru: `R${activeRoundNumber} F`,
+      status: fieldCurrentRound >= 4 ? 'final' : `round-${activeRoundNumber}-complete`,
+    };
+  });
 }
 
 function resolveFantasyPoints(
@@ -791,6 +844,8 @@ interface ScorecardDerived {
   today: number;
   thru: string | number;
   status: string;
+  activeRoundNumber: number;
+  activeRoundHoles: number;
 }
 
 function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
@@ -919,6 +974,8 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
     today: activeRoundToPar,
     thru,
     status,
+    activeRoundNumber,
+    activeRoundHoles,
   };
 }
 
