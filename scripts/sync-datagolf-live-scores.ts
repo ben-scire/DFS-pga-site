@@ -374,20 +374,17 @@ function resolveGolferFromLiveName(
   if (!parsed) return null;
   const candidates = golfersByLastName.get(parsed.last) ?? [];
   if (!candidates.length) return null;
-  if (candidates.length === 1) return candidates[0];
-
-  const liveFirst = parsed.first;
-  const prefixMatched = candidates.find((candidate) => {
+  const matchedCandidates = candidates.filter((candidate) => {
     const firstCandidate = parseFirstLastName(candidate.canonicalName)?.first;
     if (!firstCandidate) return false;
-    const liveCompact = compactNamePart(liveFirst);
-    const candidateCompact = compactNamePart(firstCandidate);
-    if (candidateCompact.startsWith(liveCompact) || liveCompact.startsWith(candidateCompact)) {
-      return true;
-    }
-    return initials(liveFirst) === initials(firstCandidate);
+    return firstNamesAppearCompatible(parsed.first, firstCandidate);
   });
-  return prefixMatched ?? null;
+
+  if (matchedCandidates.length === 1) {
+    return matchedCandidates[0];
+  }
+
+  return null;
 }
 
 function buildNameKeys(input: string): string[] {
@@ -436,6 +433,27 @@ function parseFirstLastName(input: string): { first: string; last: string } | nu
 
 function compactNamePart(value: string): string {
   return normalizeNameForMatching(value).replace(/\s+/g, '');
+}
+
+function firstNamesAppearCompatible(liveFirst: string, candidateFirst: string): boolean {
+  const liveCompact = compactNamePart(liveFirst);
+  const candidateCompact = compactNamePart(candidateFirst);
+  if (!liveCompact || !candidateCompact) return false;
+  if (liveCompact === candidateCompact) return true;
+
+  const liveIsInitialish = isInitialishName(liveFirst);
+  const candidateIsInitialish = isInitialishName(candidateFirst);
+  if (liveIsInitialish || candidateIsInitialish) {
+    return initials(liveFirst) === initials(candidateFirst);
+  }
+
+  return candidateCompact.startsWith(liveCompact) || liveCompact.startsWith(candidateCompact);
+}
+
+function isInitialishName(value: string): boolean {
+  const parts = normalizeNameForMatching(value).split(' ').filter(Boolean);
+  if (!parts.length) return false;
+  return parts.every((part) => part.length === 1);
 }
 
 function initials(value: string): string {
