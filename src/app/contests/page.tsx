@@ -12,7 +12,7 @@ import { subscribeAuthSession, type AuthSession } from '@/lib/firebase-auth';
 import { loadTestLineup } from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PersistedLineupEntry, PlayerPoolGolfer, WeeklyLeagueContest } from '@/lib/lineup-builder-types';
-import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
+import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool, loadPersistedLineup, savePersistedLineup } from '@/lib/weekly-lineup-storage';
 
 function getContestLabel(contestId: string) {
@@ -50,7 +50,7 @@ function ContestsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? 'week-2-arnold-palmer';
+  const contestId = searchParams.get('contestId') ?? getDefaultContestId();
 
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);

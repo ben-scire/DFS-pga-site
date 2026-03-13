@@ -18,7 +18,7 @@ import {
 } from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
-import { getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
+import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import {
   loadImportedPlayerPool,
   loadPersistedLineup,
@@ -44,7 +44,7 @@ function shouldUseLiveLineup(contestLockAtIso: string, contestStatus: string): b
 function LineupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? 'week-2-arnold-palmer';
+  const contestId = searchParams.get('contestId') ?? getDefaultContestId();
   const contest = getWeeklyContestById(contestId);
   const useLiveLineup = contest ? shouldUseLiveLineup(contest.lockAtIso, contest.status) : false;
 

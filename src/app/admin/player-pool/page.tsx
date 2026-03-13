@@ -10,12 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { parsePlayerPoolCsv } from '@/lib/player-pool-import';
 import { clearImportedPlayerPool, saveImportedPlayerPool } from '@/lib/weekly-lineup-storage';
-import { getWeeklyContestById } from '@/lib/weekly-lineup-seed';
+import { getDefaultContestId, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import { toast } from '@/hooks/use-toast';
 
 function AdminPlayerPoolContent() {
   const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? 'week-2-arnold-palmer';
+  const contestId = searchParams.get('contestId') ?? getDefaultContestId();
   const contest = getWeeklyContestById(contestId);
   const [csvText, setCsvText] = useState('');
 

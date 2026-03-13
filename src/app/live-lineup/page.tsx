@@ -17,7 +17,7 @@ import {
 } from '@/lib/firestore-lineups';
 import type { PersistedLineupEntry, PlayerPoolGolfer, WeeklyLeagueContest } from '@/lib/lineup-builder-types';
 import { getTestUserName, isTestUserId } from '@/lib/test-users';
-import { getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
+import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool, loadPersistedLineup, savePersistedLineup } from '@/lib/weekly-lineup-storage';
 
 function formatToPar(value: string | number | undefined): string {
@@ -106,7 +106,7 @@ function getFallbackContest(contestId: string): WeeklyLeagueContest {
 function LiveLineupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? 'week-2-arnold-palmer';
+  const contestId = searchParams.get('contestId') ?? getDefaultContestId();
 
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);

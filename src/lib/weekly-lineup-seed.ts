@@ -187,6 +187,13 @@ export function getWeeklyContestById(contestId: string) {
   return WEEKLY_CONTESTS.find((contest) => contest.id === contestId) ?? null;
 }
 
+export function getDefaultContestId() {
+  const current = WEEKLY_CONTESTS.find((contest) => contest.status === 'live')
+    ?? WEEKLY_CONTESTS.find((contest) => contest.status === 'open')
+    ?? WEEKLY_CONTESTS[0];
+  return current?.id ?? 'week-2-arnold-palmer';
+}
+
 export function getDefaultPlayerPool(contestId: string) {
   return DEFAULT_PLAYER_POOL_BY_CONTEST[contestId] ?? [];
 }
