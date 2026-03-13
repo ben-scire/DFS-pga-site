@@ -113,6 +113,7 @@ function WeekStandingsContent() {
 
   const contest = getWeeklyContestById(contestId);
   const contestName = contest?.name ?? getContestLabel(contestId);
+  const isLiveContest = contest?.status === 'live';
   const isAdmin = session?.isAdmin ?? false;
   const hideLineupPlayerNames = !isAdmin && (contest ? Date.now() < new Date(contest.lockAtIso).getTime() : false);
   const viewerUserId = session?.userSlug ?? 'guest';
@@ -124,8 +125,8 @@ function WeekStandingsContent() {
   const [playerPool, setPlayerPool] = useState<PlayerPoolGolfer[]>([]);
   const [lineups, setLineups] = useState<LeaderboardLineupEntry[]>([]);
   const [scores, setScores] = useState<Record<string, TestGolferLiveScore>>({});
-  const [lineupStatus, setLineupStatus] = useState<'checking' | 'live' | 'no-feed' | 'error'>('checking');
-  const [scoreStatus, setScoreStatus] = useState<'checking' | 'live' | 'no-feed' | 'error'>('checking');
+  const [lineupStatus, setLineupStatus] = useState<'checking' | 'live' | 'static' | 'no-feed' | 'error'>('checking');
+  const [scoreStatus, setScoreStatus] = useState<'checking' | 'live' | 'static' | 'no-feed' | 'error'>('checking');
   const [isScoreRefreshing, setIsScoreRefreshing] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -180,11 +181,17 @@ function WeekStandingsContent() {
           });
         }
         setLineups(Array.from(entriesByUser.values()));
-        setLineupStatus('live');
+        setLineupStatus(isLiveContest ? 'live' : 'static');
       } catch {
         if (!cancelled) setLineupStatus('error');
       }
     })();
+
+    if (!isLiveContest) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const unsubscribes = TEST_USERS.map((user) =>
       subscribeToTestLineup(
@@ -216,7 +223,7 @@ function WeekStandingsContent() {
         unsubscribe();
       }
     };
-  }, [contestId]);
+  }, [contestId, isLiveContest]);
 
   useEffect(() => {
     if (!isFirestoreLineupStorageAvailable()) {
@@ -230,11 +237,21 @@ function WeekStandingsContent() {
         const serverScores = await loadTestGolferScores(contestId, { source: 'server' });
         if (cancelled) return;
         setScores(serverScores);
-        setScoreStatus('live');
+        setScoreStatus(isLiveContest ? 'live' : 'static');
       } catch {
         if (!cancelled) setScoreStatus('error');
       }
     })();
+
+    if (!isLiveContest) {
+      return () => {
+        cancelled = true;
+        if (refreshTimerRef.current) {
+          clearTimeout(refreshTimerRef.current);
+          refreshTimerRef.current = null;
+        }
+      };
+    }
 
     const unsubscribe = subscribeToTestGolferScores(
       contestId,
@@ -262,7 +279,7 @@ function WeekStandingsContent() {
       }
       unsubscribe();
     };
-  }, [contestId]);
+  }, [contestId, isLiveContest]);
 
   const golfersById = useMemo(
     () => new Map(playerPool.map((golfer) => [golfer.golferId, golfer])),

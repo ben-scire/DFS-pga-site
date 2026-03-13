@@ -747,7 +747,6 @@ function computeFantasyPointsFromDfsRules(sourceRow: GenericRow): number | undef
     'streak_3_birdies',
     'three_birdie_streaks',
     'streaks_of_3_birdies',
-    'birdie_streaks',
   ]);
   const threeBirdieStreaks = Math.min(4, threeBirdieStreaksRaw);
   const bogeyFreeRounds = Math.min(4, readCount(sourceRow, ['bogey_free_rounds', 'bogey_free_round']));
