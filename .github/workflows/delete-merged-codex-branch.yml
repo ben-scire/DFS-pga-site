@@ -1,0 +1,49 @@
+name: Delete Merged Codex Branch
+
+on:
+  pull_request_target:
+    types:
+      - closed
+
+permissions:
+  contents: write
+
+jobs:
+  delete-branch:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'codex/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged Codex branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const headRepo = context.payload.pull_request.head.repo.full_name;
+            const headRef = context.payload.pull_request.head.ref;
+            const baseRef = context.payload.pull_request.base.ref;
+
+            if (headRepo !== `${owner}/${repo}`) {
+              core.info(`Skipping delete for fork branch ${headRepo}:${headRef}.`);
+              return;
+            }
+
+            if (headRef === baseRef) {
+              core.info(`Skipping delete because head ref matches base ref: ${headRef}.`);
+              return;
+            }
+
+            try {
+              await github.rest.git.deleteRef({
+                owner,
+                repo,
+                ref: `heads/${headRef}`,
+              });
+              core.info(`Deleted merged branch ${headRef}.`);
+            } catch (error) {
+              if (error.status === 404 || error.status === 422) {
+                core.warning(`Branch ${headRef} was already deleted or cannot be deleted.`);
+                return;
+              }
+              throw error;
+            }
