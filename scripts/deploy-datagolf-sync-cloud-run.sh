@@ -152,6 +152,8 @@ gcloud run jobs deploy "${JOB_NAME}" \
   --region "${REGION}" \
   --image "${IMAGE_URI}" \
   --service-account "${RUNTIME_SA_EMAIL}" \
+  --command npm \
+  --args run,sync:datagolf:scores,--,--once,--contest-id,${DATAGOLF_CONTEST_ID} \
   --set-env-vars "${ENV_VARS}" \
   --set-secrets "DATAGOLF_API_KEY=${DATAGOLF_SECRET_NAME}:latest" \
   --task-timeout 900s \
