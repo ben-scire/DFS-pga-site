@@ -199,7 +199,7 @@ function loadEnvFiles() {
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  let contestId = 'week-2-arnold-palmer';
+  let contestId = (process.env.DATAGOLF_CONTEST_ID || '').trim() || 'week-2-arnold-palmer';
   let once = false;
   let dryRun = false;
   let intervalMs = parsePositiveInt(process.env.DATAGOLF_POLL_INTERVAL_MS, DEFAULT_INTERVAL_MS);
@@ -254,6 +254,7 @@ Usage:
   tsx scripts/sync-datagolf-live-scores.ts --url "https://..." --once --dry-run
 
 Env (required unless --url is provided):
+  DATAGOLF_CONTEST_ID      Contest id to write into Firestore (default: week-2-arnold-palmer)
   DATAGOLF_LIVE_URL        Full upstream URL. Supports {key} placeholder.
   DATAGOLF_API_KEY         Optional; substituted into DATAGOLF_LIVE_URL when {key} is present.
   DATAGOLF_POLL_INTERVAL_MS  Poll interval (default 30000)
