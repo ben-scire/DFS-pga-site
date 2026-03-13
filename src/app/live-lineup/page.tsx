@@ -116,6 +116,7 @@ function LiveLineupContent() {
   const lineupUserId = isTestUserId(lineupUserIdRaw) ? lineupUserIdRaw : viewerUserId;
 
   const contest = getWeeklyContestById(contestId) ?? getFallbackContest(contestId);
+  const isLiveContest = contest.status === 'live';
   const lineupUserName = getTestUserName(lineupUserId) ?? lineupUserId;
   const isValidUser = Boolean(getTestUserName(lineupUserId));
 
@@ -158,6 +159,12 @@ function LiveLineupContent() {
       } catch {}
     })();
 
+    if (!isLiveContest) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const unsubscribe = subscribeToTestLineup(
       contestId,
       lineupUserId,
@@ -175,7 +182,7 @@ function LiveLineupContent() {
       cancelled = true;
       unsubscribe();
     };
-  }, [contestId, isValidUser, lineupUserId]);
+  }, [contestId, isLiveContest, isValidUser, lineupUserId]);
 
   useEffect(() => {
     if (!isFirestoreLineupStorageAvailable()) return;
@@ -188,6 +195,12 @@ function LiveLineupContent() {
         setLiveScores(serverScores);
       } catch {}
     })();
+
+    if (!isLiveContest) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const unsubscribe = subscribeToTestGolferScores(
       contestId,
@@ -202,7 +215,7 @@ function LiveLineupContent() {
       cancelled = true;
       unsubscribe();
     };
-  }, [contestId]);
+  }, [contestId, isLiveContest]);
 
   const lineupGolfers = useMemo(() => {
     if (!entry) return [];
