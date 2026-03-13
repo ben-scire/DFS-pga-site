@@ -20,7 +20,7 @@ import {
 } from '@/lib/firestore-lineups';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
 import { TEST_USERS } from '@/lib/test-users';
-import { getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
+import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool } from '@/lib/weekly-lineup-storage';
 
 interface LeaderboardRow {
@@ -106,7 +106,7 @@ function WeekStandingsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? 'week-2-arnold-palmer';
+  const contestId = searchParams.get('contestId') ?? getDefaultContestId();
 
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
