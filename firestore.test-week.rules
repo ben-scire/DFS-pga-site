@@ -30,7 +30,7 @@ service cloud.firestore {
     }
 
     function isAllowedContest(contestId) {
-      return contestId in ['week-1-cognizant', 'week-2-arnold-palmer'];
+      return contestId in ['week-1-cognizant', 'week-2-arnold-palmer', 'week-3-players'];
     }
 
     function isAdminUserSlug(userSlug) {
