@@ -9,5 +9,7 @@ COPY tsconfig.json ./
 COPY src ./src
 COPY scripts ./scripts
 
-# One-shot execution mode is best for Cloud Run Jobs.
-CMD ["npm", "run", "sync:datagolf:scores", "--", "--once"]
+# Keep the script as the container entrypoint so Cloud Run job args append to it
+# instead of replacing Node's default CMD from the base image.
+ENTRYPOINT ["npm", "run", "sync:datagolf:scores", "--"]
+CMD ["--once"]
