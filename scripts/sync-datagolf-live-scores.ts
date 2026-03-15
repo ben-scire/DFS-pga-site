@@ -757,6 +757,23 @@ function resolveFantasyPoints(
   return { source: 'none' };
 }
 
+function applyHardcodedFantasyAdjustment(input: {
+  contestId: string;
+  golferId: string;
+  fantasyPoints?: number;
+}): number | undefined {
+  if (typeof input.fantasyPoints !== 'number') {
+    return input.fantasyPoints;
+  }
+
+  // Temporary league-specific correction requested for week 3 Hideki discrepancy.
+  if (input.contestId === 'week-3-players' && input.golferId === 'w3-hideki-matsuyama') {
+    return roundToHalf(input.fantasyPoints - 3);
+  }
+
+  return input.fantasyPoints;
+}
+
 function computeFantasyPointsFromDfsRules(sourceRow: GenericRow): number | undefined {
   const scorecardDerived = deriveFromHoleScorecards(sourceRow);
   if (scorecardDerived) {
