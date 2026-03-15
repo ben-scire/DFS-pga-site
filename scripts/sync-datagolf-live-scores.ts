@@ -837,6 +837,40 @@ interface RoundScoreCell {
   scores?: unknown;
 }
 
+function orderRoundScoresByPlaySequence(scoresRaw: HoleScoreCell[]): HoleScoreCell[] {
+  if (scoresRaw.length <= 1) return [...scoresRaw];
+
+  const parsed = scoresRaw.map((cell, index) => ({
+    cell,
+    index,
+    hole: toSafeInt(cell.hole),
+  }));
+
+  const validHoles = parsed.filter(({ hole }) => hole !== null && hole >= 1 && hole <= 18);
+  const hasOnlyValidHoleNumbers = validHoles.length === parsed.length;
+  const holesAreUnique = new Set(validHoles.map(({ hole }) => hole)).size === validHoles.length;
+
+  // If hole metadata is incomplete/duplicated, trust upstream order as-is.
+  if (!hasOnlyValidHoleNumbers || !holesAreUnique || !validHoles.length) {
+    return [...scoresRaw];
+  }
+
+  const startHole = validHoles[0].hole as number;
+
+  // Sort by circular distance from the first observed hole so rounds that start on
+  // hole 10 preserve real play sequence (10..18,1..9) for streak detection.
+  return [...validHoles]
+    .sort((left, right) => {
+      const leftDistance = (left.hole! - startHole + 18) % 18;
+      const rightDistance = (right.hole! - startHole + 18) % 18;
+      if (leftDistance === rightDistance) {
+        return left.index - right.index;
+      }
+      return leftDistance - rightDistance;
+    })
+    .map(({ cell }) => cell);
+}
+
 interface ScorecardDerived {
   fantasyPoints: number;
   scoreToPar: number;
@@ -874,11 +908,7 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
     const round = roundsRaw[roundIndex] as RoundScoreCell;
     const roundNumber = toSafeInt(round.round_num) ?? roundIndex + 1;
     const scoresRaw = Array.isArray(round.scores) ? (round.scores as HoleScoreCell[]) : [];
-    const ordered = [...scoresRaw].sort((left, right) => {
-      const leftHole = toSafeInt(left.hole) ?? 0;
-      const rightHole = toSafeInt(right.hole) ?? 0;
-      return leftHole - rightHole;
-    });
+    const ordered = orderRoundScoresByPlaySequence(scoresRaw);
 
     let roundToPar = 0;
     let roundStrokes = 0;
@@ -911,7 +941,8 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
         holeInOnes += 1;
       }
 
-      if (delta <= -1) {
+      // DraftKings streak bonus is for consecutive birdies (not birdie-or-better).
+      if (delta === -1) {
         currentBirdieRun += 1;
         if (currentBirdieRun >= 3) {
           hasThreeBirdieStreak = true;
