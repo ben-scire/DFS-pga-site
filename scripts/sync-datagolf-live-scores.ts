@@ -34,6 +34,12 @@ type NormalizedLiveRow = {
   rawRow: GenericRow;
 };
 
+type ExistingTestScore = {
+  fantasyPoints?: number | null;
+  manualFantasyPoints?: number | null;
+  finalScoreLocked?: boolean;
+};
+
 const DEFAULT_INTERVAL_MS = 30_000;
 const DEFAULT_SCORING_MODE: DfsScoringMode = 'dfs-rules';
 
@@ -128,6 +134,9 @@ async function syncOnce(input: {
   const scoredRows = applyLivePositionPoints(annotatedRows);
 
   const db = input.dryRun ? null : getFirestore();
+  const existingScoresByGolferId = db
+    ? await loadExistingTestScoresByGolferId(db, input.contestId)
+    : new Map<string, ExistingTestScore>();
   let matched = 0;
   let wrote = 0;
   let unmatched = 0;
@@ -152,6 +161,17 @@ async function syncOnce(input: {
 
     matched += 1;
     const fantasy = resolveFantasyPoints(row, input.scoringMode);
+    const existingScore = existingScoresByGolferId.get(golfer.golferId);
+    const scoreIsLocked = existingScore?.finalScoreLocked === true;
+    const manualLockedFantasy = typeof existingScore?.manualFantasyPoints === 'number' ? existingScore.manualFantasyPoints : undefined;
+    const lockedFantasyFallback =
+      existingScore?.fantasyPoints === null || typeof existingScore?.fantasyPoints === 'number'
+        ? existingScore.fantasyPoints
+        : undefined;
+    const fantasyToWrite = scoreIsLocked
+      ? manualLockedFantasy ?? lockedFantasyFallback
+      : fantasy.value;
+    const scoringSourceToWrite = scoreIsLocked ? 'manual-lock' : fantasy.source;
     if (fantasy.source === 'dfs-rules') scoredByRules += 1;
     if (fantasy.source === 'upstream') scoredByUpstream += 1;
     if (fantasy.source === 'none') withoutFantasyPoints += 1;
@@ -174,8 +194,8 @@ async function syncOnce(input: {
           ...(row.thru !== undefined ? { thru: row.thru } : {}),
           ...(row.today !== undefined ? { today: row.today } : {}),
           ...(row.status !== undefined ? { status: row.status } : {}),
-          ...(typeof fantasy.value === 'number' ? { fantasyPoints: fantasy.value } : { fantasyPoints: null }),
-          scoringSource: fantasy.source,
+          ...(typeof fantasyToWrite === 'number' ? { fantasyPoints: fantasyToWrite } : { fantasyPoints: null }),
+          scoringSource: scoringSourceToWrite,
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
@@ -194,6 +214,26 @@ async function syncOnce(input: {
     withoutFantasyPoints,
     wrote,
   };
+}
+
+async function loadExistingTestScoresByGolferId(
+  db: ReturnType<typeof getFirestore>,
+  contestId: string
+): Promise<Map<string, ExistingTestScore>> {
+  const snapshot = await db.collection('test_scores').doc(contestId).collection('golfers').get();
+  const result = new Map<string, ExistingTestScore>();
+  snapshot.forEach((docSnapshot) => {
+    const data = docSnapshot.data();
+    result.set(docSnapshot.id, {
+      fantasyPoints: typeof data.fantasyPoints === 'number' || data.fantasyPoints === null ? data.fantasyPoints : undefined,
+      manualFantasyPoints:
+        typeof data.manualFantasyPoints === 'number' || data.manualFantasyPoints === null
+          ? data.manualFantasyPoints
+          : undefined,
+      finalScoreLocked: data.finalScoreLocked === true,
+    });
+  });
+  return result;
 }
 
 function loadEnvFiles() {
@@ -837,6 +877,40 @@ interface RoundScoreCell {
   scores?: unknown;
 }
 
+function orderRoundScoresByPlaySequence(scoresRaw: HoleScoreCell[]): HoleScoreCell[] {
+  if (scoresRaw.length <= 1) return [...scoresRaw];
+
+  const parsed = scoresRaw.map((cell, index) => ({
+    cell,
+    index,
+    hole: toSafeInt(cell.hole),
+  }));
+
+  const validHoles = parsed.filter(({ hole }) => hole !== null && hole >= 1 && hole <= 18);
+  const hasOnlyValidHoleNumbers = validHoles.length === parsed.length;
+  const holesAreUnique = new Set(validHoles.map(({ hole }) => hole)).size === validHoles.length;
+
+  // If hole metadata is incomplete/duplicated, trust upstream order as-is.
+  if (!hasOnlyValidHoleNumbers || !holesAreUnique || !validHoles.length) {
+    return [...scoresRaw];
+  }
+
+  const startHole = validHoles[0].hole as number;
+
+  // Sort by circular distance from the first observed hole so rounds that start on
+  // hole 10 preserve real play sequence (10..18,1..9) for streak detection.
+  return [...validHoles]
+    .sort((left, right) => {
+      const leftDistance = (left.hole! - startHole + 18) % 18;
+      const rightDistance = (right.hole! - startHole + 18) % 18;
+      if (leftDistance === rightDistance) {
+        return left.index - right.index;
+      }
+      return leftDistance - rightDistance;
+    })
+    .map(({ cell }) => cell);
+}
+
 interface ScorecardDerived {
   fantasyPoints: number;
   scoreToPar: number;
@@ -874,11 +948,7 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
     const round = roundsRaw[roundIndex] as RoundScoreCell;
     const roundNumber = toSafeInt(round.round_num) ?? roundIndex + 1;
     const scoresRaw = Array.isArray(round.scores) ? (round.scores as HoleScoreCell[]) : [];
-    const ordered = [...scoresRaw].sort((left, right) => {
-      const leftHole = toSafeInt(left.hole) ?? 0;
-      const rightHole = toSafeInt(right.hole) ?? 0;
-      return leftHole - rightHole;
-    });
+    const ordered = orderRoundScoresByPlaySequence(scoresRaw);
 
     let roundToPar = 0;
     let roundStrokes = 0;
@@ -911,7 +981,8 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
         holeInOnes += 1;
       }
 
-      if (delta <= -1) {
+      // DraftKings streak bonus is for consecutive birdies (not birdie-or-better).
+      if (delta === -1) {
         currentBirdieRun += 1;
         if (currentBirdieRun >= 3) {
           hasThreeBirdieStreak = true;
