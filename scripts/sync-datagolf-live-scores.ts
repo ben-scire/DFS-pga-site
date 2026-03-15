@@ -152,6 +152,11 @@ async function syncOnce(input: {
 
     matched += 1;
     const fantasy = resolveFantasyPoints(row, input.scoringMode);
+    const adjustedFantasyValue = applyHardcodedFantasyAdjustment({
+      contestId: input.contestId,
+      golferId: golfer.golferId,
+      fantasyPoints: fantasy.value,
+    });
     if (fantasy.source === 'dfs-rules') scoredByRules += 1;
     if (fantasy.source === 'upstream') scoredByUpstream += 1;
     if (fantasy.source === 'none') withoutFantasyPoints += 1;
@@ -174,7 +179,7 @@ async function syncOnce(input: {
           ...(row.thru !== undefined ? { thru: row.thru } : {}),
           ...(row.today !== undefined ? { today: row.today } : {}),
           ...(row.status !== undefined ? { status: row.status } : {}),
-          ...(typeof fantasy.value === 'number' ? { fantasyPoints: fantasy.value } : { fantasyPoints: null }),
+          ...(typeof adjustedFantasyValue === 'number' ? { fantasyPoints: adjustedFantasyValue } : { fantasyPoints: null }),
           scoringSource: fantasy.source,
           updatedAt: FieldValue.serverTimestamp(),
         },
@@ -715,6 +720,23 @@ function resolveFantasyPoints(
     return { value: roundToHundredth(row.upstreamFantasyPoints), source: 'upstream' };
   }
   return { source: 'none' };
+}
+
+function applyHardcodedFantasyAdjustment(input: {
+  contestId: string;
+  golferId: string;
+  fantasyPoints?: number;
+}): number | undefined {
+  if (typeof input.fantasyPoints !== 'number') {
+    return input.fantasyPoints;
+  }
+
+  // Temporary league-specific correction requested for week 3 Hideki discrepancy.
+  if (input.contestId === 'week-3-players' && input.golferId === 'w3-hideki-matsuyama') {
+    return roundToHalf(input.fantasyPoints - 3);
+  }
+
+  return input.fantasyPoints;
 }
 
 function computeFantasyPointsFromDfsRules(sourceRow: GenericRow): number | undefined {
