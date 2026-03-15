@@ -60,6 +60,40 @@ service cloud.firestore {
         data.version == 1;
     }
 
+
+    function isValidTestScorePayload(data, contestId, golferId) {
+      return data.keys().hasOnly([
+          'contestId',
+          'golferId',
+          'position',
+          'scoreToPar',
+          'thru',
+          'today',
+          'status',
+          'fantasyPoints',
+          'scoringSource',
+          'updatedAt',
+          'updatedBySlug',
+          'finalScoreLocked',
+          'manualFantasyPoints',
+          'manualScoreNote'
+        ]) &&
+        data.contestId == contestId &&
+        data.golferId == golferId &&
+        (!('position' in data) || data.position is string) &&
+        (!('scoreToPar' in data) || data.scoreToPar is int || data.scoreToPar is float || data.scoreToPar is string) &&
+        (!('thru' in data) || data.thru is int || data.thru is string) &&
+        (!('today' in data) || data.today is int || data.today is float || data.today is string) &&
+        (!('status' in data) || data.status is string) &&
+        (!('fantasyPoints' in data) || data.fantasyPoints is int || data.fantasyPoints is float || data.fantasyPoints == null) &&
+        (!('scoringSource' in data) || data.scoringSource is string) &&
+        data.updatedBySlug is string &&
+        isAdminUserSlug(data.updatedBySlug) &&
+        (!('finalScoreLocked' in data) || data.finalScoreLocked is bool) &&
+        (!('manualFantasyPoints' in data) || data.manualFantasyPoints is int || data.manualFantasyPoints is float || data.manualFantasyPoints == null) &&
+        (!('manualScoreNote' in data) || data.manualScoreNote is string);
+    }
+
     function isValidPaymentStatusPayload(data, userSlug) {
       return data.keys().hasOnly([
           'userSlug',
@@ -99,7 +133,9 @@ service cloud.firestore {
 
     match /test_scores/{contestId}/golfers/{golferId} {
       allow read: if isAllowedContest(contestId);
-      allow write: if false;
+      allow create, update: if isAllowedContest(contestId) &&
+        isValidTestScorePayload(request.resource.data, contestId, golferId);
+      allow delete: if false;
     }
 
     match /test_payment_status/{userSlug} {
