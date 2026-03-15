@@ -34,6 +34,12 @@ type NormalizedLiveRow = {
   rawRow: GenericRow;
 };
 
+type ExistingTestScore = {
+  fantasyPoints?: number | null;
+  manualFantasyPoints?: number | null;
+  finalScoreLocked?: boolean;
+};
+
 const DEFAULT_INTERVAL_MS = 30_000;
 const DEFAULT_SCORING_MODE: DfsScoringMode = 'dfs-rules';
 
@@ -128,6 +134,9 @@ async function syncOnce(input: {
   const scoredRows = applyLivePositionPoints(annotatedRows);
 
   const db = input.dryRun ? null : getFirestore();
+  const existingScoresByGolferId = db
+    ? await loadExistingTestScoresByGolferId(db, input.contestId)
+    : new Map<string, ExistingTestScore>();
   let matched = 0;
   let wrote = 0;
   let unmatched = 0;
@@ -152,11 +161,17 @@ async function syncOnce(input: {
 
     matched += 1;
     const fantasy = resolveFantasyPoints(row, input.scoringMode);
-    const adjustedFantasyValue = applyHardcodedFantasyAdjustment({
-      contestId: input.contestId,
-      golferId: golfer.golferId,
-      fantasyPoints: fantasy.value,
-    });
+    const existingScore = existingScoresByGolferId.get(golfer.golferId);
+    const scoreIsLocked = existingScore?.finalScoreLocked === true;
+    const manualLockedFantasy = typeof existingScore?.manualFantasyPoints === 'number' ? existingScore.manualFantasyPoints : undefined;
+    const lockedFantasyFallback =
+      existingScore?.fantasyPoints === null || typeof existingScore?.fantasyPoints === 'number'
+        ? existingScore.fantasyPoints
+        : undefined;
+    const fantasyToWrite = scoreIsLocked
+      ? manualLockedFantasy ?? lockedFantasyFallback
+      : fantasy.value;
+    const scoringSourceToWrite = scoreIsLocked ? 'manual-lock' : fantasy.source;
     if (fantasy.source === 'dfs-rules') scoredByRules += 1;
     if (fantasy.source === 'upstream') scoredByUpstream += 1;
     if (fantasy.source === 'none') withoutFantasyPoints += 1;
@@ -179,8 +194,8 @@ async function syncOnce(input: {
           ...(row.thru !== undefined ? { thru: row.thru } : {}),
           ...(row.today !== undefined ? { today: row.today } : {}),
           ...(row.status !== undefined ? { status: row.status } : {}),
-          ...(typeof adjustedFantasyValue === 'number' ? { fantasyPoints: adjustedFantasyValue } : { fantasyPoints: null }),
-          scoringSource: fantasy.source,
+          ...(typeof fantasyToWrite === 'number' ? { fantasyPoints: fantasyToWrite } : { fantasyPoints: null }),
+          scoringSource: scoringSourceToWrite,
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
@@ -199,6 +214,26 @@ async function syncOnce(input: {
     withoutFantasyPoints,
     wrote,
   };
+}
+
+async function loadExistingTestScoresByGolferId(
+  db: ReturnType<typeof getFirestore>,
+  contestId: string
+): Promise<Map<string, ExistingTestScore>> {
+  const snapshot = await db.collection('test_scores').doc(contestId).collection('golfers').get();
+  const result = new Map<string, ExistingTestScore>();
+  snapshot.forEach((docSnapshot) => {
+    const data = docSnapshot.data();
+    result.set(docSnapshot.id, {
+      fantasyPoints: typeof data.fantasyPoints === 'number' || data.fantasyPoints === null ? data.fantasyPoints : undefined,
+      manualFantasyPoints:
+        typeof data.manualFantasyPoints === 'number' || data.manualFantasyPoints === null
+          ? data.manualFantasyPoints
+          : undefined,
+      finalScoreLocked: data.finalScoreLocked === true,
+    });
+  });
+  return result;
 }
 
 function loadEnvFiles() {
