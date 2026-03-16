@@ -10,6 +10,7 @@ import standingsData from '../../../league-scoring/season-standings.json';
 import scheduleData from '../../../league-scoring/schedule.json';
 import weekOneData from '../../../league-scoring/weekly-scores/week-1-cognizant.json';
 import weekTwoData from '../../../league-scoring/weekly-scores/week-2-arnold-palmer.json';
+import weekThreeData from '../../../league-scoring/weekly-scores/week-3-players.json';
 
 type StandingsEntry = {
   rank: number | null;
@@ -130,7 +131,7 @@ export default function SeasonPage() {
     return (b.weeklyFantasyPointsTotal ?? -1) - (a.weeklyFantasyPointsTotal ?? -1);
   });
 
-  const weeklyScores = [weekOneData as WeeklyScoreFile, weekTwoData as WeeklyScoreFile].sort(
+  const weeklyScores = [weekOneData as WeeklyScoreFile, weekTwoData as WeeklyScoreFile, weekThreeData as WeeklyScoreFile].sort(
     (a, b) => a.eventId - b.eventId
   );
   const winners = getRecentWinners(weeklyScores);
