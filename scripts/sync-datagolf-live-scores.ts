@@ -55,6 +55,12 @@ async function main() {
   if (!playerPool.length) {
     throw new Error(`No seeded player pool found for contest "${options.contestId}".`);
   }
+  if (!isContestLiveSyncEnabled(contest.status)) {
+    console.log(
+      `Contest ${options.contestId} is marked "${contest.status}". Skipping Data Golf sync because the tournament is not live.`
+    );
+    return;
+  }
 
   const liveUrl = buildLiveUrl(options.urlOverride);
   const golfersByName = buildGolferLookup(playerPool);
@@ -287,6 +293,10 @@ function parseArgs(argv: string[]): CliOptions {
   }
 
   return { contestId, once, dryRun, intervalMs, scoringMode, urlOverride };
+}
+
+function isContestLiveSyncEnabled(status: string): boolean {
+  return status === 'live';
 }
 
 function printHelp() {

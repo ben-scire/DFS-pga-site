@@ -335,6 +335,9 @@ function WeekStandingsContent() {
       .sort()
       .at(-1);
   }, [scores]);
+  const statusHeadline = isLiveContest
+    ? (isScoreRefreshing ? 'Scores updating live...' : 'Live feed running')
+    : 'Final standings locked';
 
   if (checkingSession) {
     return <div className="min-h-screen bg-[#081325]" />;
@@ -381,19 +384,21 @@ function WeekStandingsContent() {
         <Card className="rounded-3xl border border-cyan-300/20 bg-gradient-to-b from-[#0f1d33] to-[#0b1729] text-zinc-100">
           <CardHeader>
             <div className={`rounded-xl border px-3 py-2 text-sm transition-all duration-300 ${
-              isScoreRefreshing ? 'border-emerald-300/50 bg-emerald-300/15' : 'border-cyan-200/20 bg-cyan-300/10'
+              isLiveContest && isScoreRefreshing ? 'border-emerald-300/50 bg-emerald-300/15' : 'border-cyan-200/20 bg-cyan-300/10'
             }`}>
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-cyan-50/90">
-                  {isScoreRefreshing ? 'Scores updating live...' : 'Live feed running'}
+                  {statusHeadline}
                   </p>
                   <p className="truncate text-[11px] text-cyan-100/65">
                     Lineup {lineupStatus.toUpperCase()} · Score {scoreStatus.toUpperCase()} · Updated{' '}
                     {latestUpdateIso ? new Date(latestUpdateIso).toLocaleTimeString() : '--'}
                   </p>
                 </div>
-                <RefreshCw className={`h-4 w-4 ${isScoreRefreshing ? 'animate-spin text-emerald-200' : 'text-cyan-200/70'}`} />
+                <RefreshCw className={`h-4 w-4 ${
+                  isLiveContest && isScoreRefreshing ? 'animate-spin text-emerald-200' : 'text-cyan-200/70'
+                }`} />
               </div>
             </div>
             <div className="flex justify-end">
