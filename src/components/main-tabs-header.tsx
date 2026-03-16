@@ -7,7 +7,7 @@ import { signOutAuthSession, type AuthSession } from '@/lib/firebase-auth';
 import { getDefaultContestId, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import { cn } from '@/lib/utils';
 
-type MainTabKey = 'home' | 'lineup' | 'week-standings' | 'season' | 'admin';
+type MainTabKey = 'home' | 'lineup' | 'week-standings' | 'season' | 'scoring-rules' | 'admin';
 
 interface MainTabsHeaderProps {
   session: AuthSession;
@@ -30,6 +30,7 @@ function tabHref(tab: MainTabKey, contestId: string): string {
   }
   if (tab === 'week-standings') return `/week-standings?contestId=${encodeURIComponent(contestId)}`;
   if (tab === 'season') return '/season';
+  if (tab === 'scoring-rules') return '/scoring-rules';
   return '/admin';
 }
 
@@ -41,6 +42,7 @@ export default function MainTabsHeader({ session, activeTab, contestId = getDefa
     { key: 'lineup', label: 'My Lineup' },
     { key: 'week-standings', label: 'Week Standings' },
     { key: 'season', label: 'Season Standings' },
+    { key: 'scoring-rules', label: 'Scoring Rules' },
     { key: 'admin', label: 'Admin', hidden: !session.isAdmin },
   ];
 

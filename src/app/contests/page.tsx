@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Check, Sparkles } from 'lucide-react';
+import { Check, ChevronRight, Sparkles, Trophy } from 'lucide-react';
 import MainTabsHeader from '@/components/main-tabs-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,14 @@ import { subscribeAuthSession, type AuthSession } from '@/lib/firebase-auth';
 import { loadTestLineup } from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PersistedLineupEntry, PlayerPoolGolfer, WeeklyLeagueContest } from '@/lib/lineup-builder-types';
+import {
+  getNextQuarterEvent,
+  getQuarterFinaleEvent,
+  getSeasonEventColumns,
+  getSeasonStandingsRows,
+  getShortEventLabel,
+  getUpcomingQuarterEvents,
+} from '@/lib/season-display';
 import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool, loadPersistedLineup, savePersistedLineup } from '@/lib/weekly-lineup-storage';
 
@@ -46,6 +54,12 @@ function getFallbackContest(contestId: string): WeeklyLeagueContest {
   };
 }
 
+function getPodiumTone(place: number) {
+  if (place === 1) return 'from-amber-300/30 via-amber-200/20 to-[#181f2f] border-amber-200/40';
+  if (place === 2) return 'from-slate-200/20 via-slate-100/10 to-[#151d2a] border-slate-200/30';
+  return 'from-orange-300/20 via-orange-200/10 to-[#151c28] border-orange-200/30';
+}
+
 function ContestsContent() {
   const router = useRouter();
   const pathname = usePathname();
@@ -62,6 +76,14 @@ function ContestsContent() {
     const ids = [contestId, ...WEEKLY_CONTESTS.map((item) => item.id)];
     return Array.from(new Set(ids)).map((id) => ({ id, label: getContestLabel(id) }));
   }, [contestId]);
+  const standings = useMemo(() => getSeasonStandingsRows(), []);
+  const eventColumns = useMemo(() => getSeasonEventColumns(), []);
+  const latestColumn = eventColumns[0] ?? null;
+  const podium = standings.slice(0, 3);
+  const inTheHunt = standings.slice(3, 10);
+  const nextEvent = getNextQuarterEvent(1);
+  const quarterFinale = getQuarterFinaleEvent(1);
+  const q1Remaining = getUpcomingQuarterEvents(1);
 
   useEffect(() => {
     const unsubscribe = subscribeAuthSession((nextSession) => {
@@ -134,14 +156,15 @@ function ContestsContent() {
         <div className="absolute right-0 top-0 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto max-w-5xl space-y-5">
+      <div className="relative mx-auto max-w-6xl space-y-5">
         <MainTabsHeader session={session} activeTab="home" contestId={contest.id} />
 
         <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#171f2d] via-[#111827] to-[#0b1018] p-6 shadow-[0_24px_90px_rgba(0,0,0,0.5)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-400">5x5 Global</p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">2026 Golf DK Championship</h1>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Q1 Race Dashboard</h1>
+              <p className="mt-2 text-sm text-zinc-400">Live season snapshot with the championship podium front and center.</p>
             </div>
             <label className="inline-flex items-center rounded-md border border-white/15 bg-white/5 px-2 text-sm text-zinc-200">
               <span className="mr-2 text-xs uppercase tracking-wide text-zinc-500">Week</span>
@@ -171,16 +194,134 @@ function ContestsContent() {
           </div>
         </header>
 
-        <Card className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#101823] to-[#0b1017] text-zinc-100 shadow-[0_16px_55px_rgba(0,0,0,0.35)]">
-          <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500" />
+        <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
+          <Card className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#101823] to-[#0b1017] text-zinc-100 shadow-[0_16px_55px_rgba(0,0,0,0.35)]">
+            <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500" />
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-cyan-300" />
+                <CardTitle className="text-2xl tracking-tight">Top 3</CardTitle>
+              </div>
+              <CardDescription className="text-zinc-400">
+                Current championship podium with the latest completed finish from {latestColumn?.shortLabel ?? 'Q1'}.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 lg:grid-cols-3 lg:items-end">
+                {[podium[1], podium[0], podium[2]].filter(Boolean).map((entry) => {
+                  const isLeader = entry.rank === 1;
+                  return (
+                    <div
+                      key={entry.entryId}
+                      className={`rounded-3xl border bg-gradient-to-b p-4 ${getPodiumTone(entry.rank ?? 3)} ${isLeader ? 'lg:-translate-y-3' : ''}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">#{entry.rank}</p>
+                          <h2 className={`mt-2 font-bold ${isLeader ? 'text-2xl' : 'text-xl'}`}>{entry.displayName}</h2>
+                        </div>
+                        <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-xs font-semibold text-zinc-100">
+                          {entry.championshipPoints} pts
+                        </span>
+                      </div>
+                      {latestColumn && (
+                        <p className="mt-4 text-sm text-zinc-300">
+                          {latestColumn.shortLabel}: <span className="font-semibold text-zinc-100">{entry.finishByEventId[latestColumn.eventId]}</span>
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold">In the Hunt</h3>
+                    <p className="text-sm text-zinc-400">Ranks 4-10 staying within striking distance.</p>
+                  </div>
+                  <Badge className="border border-cyan-200/30 bg-cyan-300/10 text-cyan-100">4-10</Badge>
+                </div>
+                <div className="space-y-2">
+                  {inTheHunt.map((entry) => (
+                    <div key={entry.entryId} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0f1622] px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-zinc-100">#{entry.rank} {entry.displayName}</p>
+                        {latestColumn && (
+                          <p className="text-xs text-zinc-400">
+                            {latestColumn.shortLabel}: {entry.finishByEventId[latestColumn.eventId]}
+                          </p>
+                        )}
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold text-cyan-200">{entry.championshipPoints} pts</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            <Card className="rounded-3xl border border-white/10 bg-gradient-to-b from-[#131c27] to-[#0c1218] text-zinc-100">
+              <CardHeader>
+                <CardTitle>Up Next</CardTitle>
+                <CardDescription className="text-zinc-400">The next stop in Q1, with the quarter finale in view.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {nextEvent && (
+                  <div className="rounded-3xl border border-emerald-300/30 bg-emerald-300/10 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">Next Event</p>
+                    <h3 className="mt-2 text-xl font-bold">{getShortEventLabel(nextEvent.id, nextEvent.name)}</h3>
+                    <p className="mt-1 text-sm text-zinc-300">{nextEvent.name}</p>
+                  </div>
+                )}
+                {quarterFinale && (
+                  <div className="rounded-3xl border border-amber-300/30 bg-amber-300/10 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/80">Q1 End</p>
+                    <h3 className="mt-2 text-xl font-bold">{getShortEventLabel(quarterFinale.id, quarterFinale.name)}</h3>
+                    <p className="mt-1 text-sm text-zinc-300">{quarterFinale.name}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-3xl border border-white/10 bg-[#0c1218]/95 text-zinc-100">
+              <CardHeader>
+                <CardTitle>Q1 Runway</CardTitle>
+                <CardDescription className="text-zinc-400">Remaining Q1 events after The Players.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {q1Remaining.map((event) => (
+                  <div key={event.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <div>
+                      <p className="font-medium">{getShortEventLabel(event.id, event.name)}</p>
+                      <p className="text-xs text-zinc-500">{event.name}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {event.id === nextEvent?.id && (
+                        <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100">Next</Badge>
+                      )}
+                      {event.isQuarterFinale && (
+                        <Badge className="border border-amber-300/30 bg-amber-300/10 text-amber-100">Finale</Badge>
+                      )}
+                      {!event.isQuarterFinale && event.id !== nextEvent?.id && (
+                        <ChevronRight className="h-4 w-4 text-zinc-500" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Card className="rounded-3xl border border-white/10 bg-[#0b1118]/95 text-zinc-100 shadow-[0_16px_55px_rgba(0,0,0,0.3)]">
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <CardTitle className="text-2xl tracking-tight">{contest.name}</CardTitle>
-                <CardDescription className="mt-1 text-zinc-400">Home</CardDescription>
-                <p className="mt-2 text-xs text-zinc-400">
-                  Lock: {new Date(contest.lockAtIso).toLocaleString()}
-                </p>
+                <CardDescription className="mt-1 text-zinc-400">Week Hub</CardDescription>
+                <p className="mt-2 text-xs text-zinc-500">Lock: {new Date(contest.lockAtIso).toLocaleString()}</p>
               </div>
               <Badge className={savedLineupSummary.validation.isLocked ? 'bg-zinc-700 text-zinc-100' : 'bg-blue-500/20 text-blue-300'}>
                 {savedLineupSummary.validation.isLocked ? 'LOCKED' : 'OPEN'}
@@ -193,29 +334,7 @@ function ContestsContent() {
               </div>
             )}
           </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Roster</p>
-                <p className="mt-1 font-semibold text-zinc-100">{contest.rosterSize} golfers</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Salary Cap</p>
-                <p className="mt-1 font-semibold text-zinc-100">${contest.salaryCap.toLocaleString()}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Selected</p>
-                <p className="mt-1 font-semibold text-zinc-100">
-                  {`${savedLineupSummary.validation.positionsFilled}/${contest.rosterSize}`}
-                </p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Status</p>
-                <p className="mt-1 font-semibold text-zinc-100">{contest.status.toUpperCase()}</p>
-              </div>
-            </div>
-
+          <CardContent className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
             <div className="rounded-2xl border border-white/10 bg-[#0a1018]/90 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">My Lineup</p>
@@ -245,13 +364,36 @@ function ContestsContent() {
               )}
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button asChild className="h-11 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 text-white hover:from-blue-400 hover:to-cyan-300">
-                <Link href={`/lineup?contestId=${contest.id}`}>My Lineup</Link>
-              </Button>
-              <Button asChild variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
-                <Link href={`/week-standings?contestId=${contest.id}`}>Week Standings</Link>
-              </Button>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">Roster</p>
+                  <p className="mt-1 font-semibold text-zinc-100">{contest.rosterSize} golfers</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">Salary Cap</p>
+                  <p className="mt-1 font-semibold text-zinc-100">${contest.salaryCap.toLocaleString()}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">Selected</p>
+                  <p className="mt-1 font-semibold text-zinc-100">
+                    {`${savedLineupSummary.validation.positionsFilled}/${contest.rosterSize}`}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">Status</p>
+                  <p className="mt-1 font-semibold text-zinc-100">{contest.status.toUpperCase()}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button asChild className="h-11 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 text-white hover:from-blue-400 hover:to-cyan-300">
+                  <Link href={`/lineup?contestId=${contest.id}`}>My Lineup</Link>
+                </Button>
+                <Button asChild variant="outline" className="h-11 rounded-xl border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10">
+                  <Link href={`/week-standings?contestId=${contest.id}`}>Week Standings</Link>
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -262,7 +404,7 @@ function ContestsContent() {
 
 export default function ContestsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#111318]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#080c13]" />}>
       <ContestsContent />
     </Suspense>
   );

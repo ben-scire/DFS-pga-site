@@ -12,11 +12,12 @@ import { getTestUserName } from '@/lib/test-users';
 import { resolveTestUserFromEntryName } from '@/lib/test-user-entry-aliases';
 import moneyTrackerData from '../../league-scoring/money-tracker.json';
 
-export type PaymentStatusField = 'week1Paid' | 'week2Paid' | 'quarter1Paid';
+export type PaymentStatusField = 'week1Paid' | 'week2Paid' | 'week3Paid' | 'quarter1Paid';
 
 export interface UserPaymentStatus {
   week1Paid: boolean;
   week2Paid: boolean;
+  week3Paid: boolean;
   quarter1Paid: boolean;
 }
 
@@ -25,6 +26,8 @@ export type PaymentStatusMap = Record<string, UserPaymentStatus>;
 interface MoneyTrackerEntry {
   entryName: string;
   week1Paid?: boolean;
+  week2Paid?: boolean;
+  week3Paid?: boolean;
   quarter1Paid?: boolean;
 }
 
@@ -36,6 +39,7 @@ const PAYMENT_STATUS_COLLECTION = 'test_payment_status';
 const EMPTY_PAYMENT_STATUS: UserPaymentStatus = {
   week1Paid: false,
   week2Paid: false,
+  week3Paid: false,
   quarter1Paid: false,
 };
 
@@ -45,7 +49,8 @@ const DEFAULT_PAYMENT_STATUS_BY_SLUG: PaymentStatusMap = ((moneyTrackerData as M
     if (!resolved) return acc;
     acc[resolved.userSlug] = {
       week1Paid: row.week1Paid === true,
-      week2Paid: false,
+      week2Paid: row.week2Paid === true,
+      week3Paid: row.week3Paid === true,
       quarter1Paid: row.quarter1Paid === true,
     };
     return acc;
@@ -65,6 +70,7 @@ function parseStatusValue(value: unknown): UserPaymentStatus {
     return {
       week1Paid: row.paid,
       week2Paid: false,
+      week3Paid: false,
       quarter1Paid: false,
     };
   }
@@ -72,6 +78,7 @@ function parseStatusValue(value: unknown): UserPaymentStatus {
   return {
     week1Paid: row.week1Paid === true,
     week2Paid: row.week2Paid === true,
+    week3Paid: row.week3Paid === true,
     quarter1Paid: row.quarter1Paid === true,
   };
 }

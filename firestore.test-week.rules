@@ -100,6 +100,7 @@ service cloud.firestore {
           'userDisplayName',
           'week1Paid',
           'week2Paid',
+          'week3Paid',
           'quarter1Paid',
           'paid',
           'updatedByUid',
@@ -111,6 +112,7 @@ service cloud.firestore {
         data.userDisplayName is string &&
         (!('week1Paid' in data) || data.week1Paid is bool) &&
         (!('week2Paid' in data) || data.week2Paid is bool) &&
+        (!('week3Paid' in data) || data.week3Paid is bool) &&
         (!('quarter1Paid' in data) || data.quarter1Paid is bool) &&
         (!('paid' in data) || data.paid is bool) &&
         (!('updatedByUid' in data) || data.updatedByUid is string) &&
