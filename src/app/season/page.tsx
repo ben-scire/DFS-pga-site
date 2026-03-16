@@ -24,6 +24,13 @@ function getTierBadgeLabel(tier: ScheduleEvent['tier']) {
   return 'STD';
 }
 
+function getMobileRowTone(rank: number | null) {
+  if (rank === 1) return 'border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(11,19,34,0.92))]';
+  if (rank === 2) return 'border-slate-300/20 bg-[linear-gradient(135deg,rgba(226,232,240,0.14),rgba(11,19,34,0.92))]';
+  if (rank === 3) return 'border-orange-300/20 bg-[linear-gradient(135deg,rgba(251,146,60,0.14),rgba(11,19,34,0.92))]';
+  return 'border-white/10 bg-white/[0.03]';
+}
+
 export default function SeasonPage() {
   const router = useRouter();
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -81,7 +88,47 @@ export default function SeasonPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <div className="space-y-2 md:hidden">
+              {standings.map((entry) => (
+                <div
+                  key={entry.entryId}
+                  className={`rounded-3xl border p-3 ${getMobileRowTone(entry.rank)}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-white/10 bg-white/10 px-2 text-xs font-semibold text-zinc-100">
+                          {entry.rank ?? '--'}
+                        </span>
+                        <p className="truncate text-base font-semibold text-zinc-50">{entry.displayName}</p>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-right">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-100/70">Champ</p>
+                      <p className="text-sm font-bold text-cyan-100">{entry.championshipPoints ?? '--'}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {eventColumns.map((column) => (
+                      <div
+                        key={`${entry.entryId}-mobile-${column.eventId}`}
+                        className={`rounded-2xl border px-2 py-2 text-center ${getTierBadgeClass(column.tier)}`}
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">
+                          {column.shortLabel}
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-zinc-50">
+                          {entry.finishByEventId[column.eventId] ?? '—'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-2xl border border-white/10 md:block">
               <table className="w-full min-w-[620px] table-fixed text-xs sm:min-w-[760px] sm:text-sm">
                 <colgroup>
                   <col className="w-[56px] sm:w-[72px]" />
