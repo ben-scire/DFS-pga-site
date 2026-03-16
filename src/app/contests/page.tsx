@@ -150,7 +150,7 @@ function ContestsContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#080c13] px-4 py-6 text-zinc-100">
+    <div className="relative min-h-screen overflow-hidden bg-[#080c13] px-3 py-4 text-zinc-100 sm:px-4 sm:py-6">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-20 top-8 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="absolute right-0 top-0 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
@@ -159,15 +159,15 @@ function ContestsContent() {
       <div className="relative mx-auto max-w-6xl space-y-5">
         <MainTabsHeader session={session} activeTab="home" contestId={contest.id} />
 
-        <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#171f2d] via-[#111827] to-[#0b1018] p-6 shadow-[0_24px_90px_rgba(0,0,0,0.5)]">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#171f2d] via-[#111827] to-[#0b1018] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.5)] sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-400">5x5 Global</p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Q1 Race Dashboard</h1>
-              <p className="mt-2 text-sm text-zinc-400">Live season snapshot with the championship podium front and center.</p>
+              <h1 className="mt-2 text-[2.5rem] font-bold leading-none tracking-tight sm:text-4xl">Q1 Race Dashboard</h1>
+              <p className="mt-3 max-w-2xl text-base text-zinc-400 sm:mt-2 sm:text-sm">Live season snapshot with the championship podium front and center.</p>
             </div>
-            <label className="inline-flex items-center rounded-md border border-white/15 bg-white/5 px-2 text-sm text-zinc-200">
-              <span className="mr-2 text-xs uppercase tracking-wide text-zinc-500">Week</span>
+            <label className="flex w-full items-center rounded-2xl border border-white/15 bg-white/5 px-4 text-base text-zinc-200 sm:inline-flex sm:w-auto sm:rounded-md sm:px-2 sm:text-sm">
+              <span className="mr-3 shrink-0 text-xs uppercase tracking-wide text-zinc-500">Week</span>
               <select
                 value={contest.id}
                 onChange={(event) => {
@@ -175,7 +175,7 @@ function ContestsContent() {
                   next.set('contestId', event.target.value);
                   router.push(`${pathname}?${next.toString()}`);
                 }}
-                className="bg-transparent py-2 text-sm text-zinc-100 outline-none"
+                className="min-w-0 flex-1 bg-transparent py-3 text-base text-zinc-100 outline-none sm:py-2 sm:text-sm"
               >
                 {contestOptions.map((option) => (
                   <option key={option.id} value={option.id} className="bg-[#0d1420]">
@@ -185,11 +185,11 @@ function ContestsContent() {
               </select>
             </label>
           </div>
-          <div className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+          <div className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 sm:py-2">
             <Sparkles className="h-4 w-4 text-emerald-300" />
             <div>
               <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Logged In As</p>
-              <p className="text-sm font-semibold text-zinc-100">{session.userDisplayName}</p>
+              <p className="text-base font-semibold text-zinc-100 sm:text-sm">{session.userDisplayName}</p>
             </div>
           </div>
         </header>
@@ -207,34 +207,40 @@ function ContestsContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-3 lg:grid-cols-3 lg:items-end">
+              <div className="grid grid-cols-3 items-end gap-2 sm:gap-3">
                 {[podium[1], podium[0], podium[2]].filter(Boolean).map((entry) => {
                   const isLeader = entry.rank === 1;
                   return (
                     <div
                       key={entry.entryId}
-                      className={`rounded-3xl border bg-gradient-to-b p-4 ${getPodiumTone(entry.rank ?? 3)} ${isLeader ? 'lg:-translate-y-3' : ''}`}
+                      className={`min-w-0 rounded-[26px] border bg-gradient-to-b p-2.5 sm:rounded-3xl sm:p-4 ${getPodiumTone(entry.rank ?? 3)} ${isLeader ? '-translate-y-2 sm:-translate-y-3' : ''}`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">#{entry.rank}</p>
-                          <h2 className={`mt-2 font-bold ${isLeader ? 'text-2xl' : 'text-xl'}`}>{entry.displayName}</h2>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-400 sm:text-xs">#{entry.rank}</p>
+                            <h2 className={`mt-1 truncate font-bold leading-tight ${isLeader ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'}`}>
+                              {entry.displayName}
+                            </h2>
+                          </div>
+                          <span className="shrink-0 rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[10px] font-semibold text-zinc-100 sm:text-xs">
+                            {entry.championshipPoints} pts
+                          </span>
                         </div>
-                        <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-xs font-semibold text-zinc-100">
-                          {entry.championshipPoints} pts
-                        </span>
+                        {latestColumn && (
+                          <p className="text-[11px] leading-snug text-zinc-300 sm:mt-4 sm:text-sm">
+                            <span className="hidden sm:inline">{latestColumn.shortLabel}: </span>
+                            <span className="sm:hidden">{latestColumn.shortLabel.split(' ')[0]} </span>
+                            <span className="font-semibold text-zinc-100">{entry.finishByEventId[latestColumn.eventId]}</span>
+                          </p>
+                        )}
                       </div>
-                      {latestColumn && (
-                        <p className="mt-4 text-sm text-zinc-300">
-                          {latestColumn.shortLabel}: <span className="font-semibold text-zinc-100">{entry.finishByEventId[latestColumn.eventId]}</span>
-                        </p>
-                      )}
                     </div>
                   );
                 })}
               </div>
 
-              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold">In the Hunt</h3>
@@ -246,7 +252,7 @@ function ContestsContent() {
                   {inTheHunt.map((entry) => (
                     <div key={entry.entryId} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0f1622] px-3 py-2">
                       <div className="min-w-0">
-                        <p className="font-semibold text-zinc-100">#{entry.rank} {entry.displayName}</p>
+                        <p className="truncate text-sm font-semibold text-zinc-100 sm:text-base">#{entry.rank} {entry.displayName}</p>
                         {latestColumn && (
                           <p className="text-xs text-zinc-400">
                             {latestColumn.shortLabel}: {entry.finishByEventId[latestColumn.eventId]}
@@ -267,18 +273,18 @@ function ContestsContent() {
                 <CardTitle>Up Next</CardTitle>
                 <CardDescription className="text-zinc-400">The next stop in Q1, with the quarter finale in view.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 pt-0">
                 {nextEvent && (
-                  <div className="rounded-3xl border border-emerald-300/30 bg-emerald-300/10 p-4">
+                  <div className="rounded-3xl border border-emerald-300/30 bg-emerald-300/10 p-3.5 sm:p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">Next Event</p>
-                    <h3 className="mt-2 text-xl font-bold">{getShortEventLabel(nextEvent.id, nextEvent.name)}</h3>
+                    <h3 className="mt-2 text-lg font-bold sm:text-xl">{getShortEventLabel(nextEvent.id, nextEvent.name)}</h3>
                     <p className="mt-1 text-sm text-zinc-300">{nextEvent.name}</p>
                   </div>
                 )}
                 {quarterFinale && (
-                  <div className="rounded-3xl border border-amber-300/30 bg-amber-300/10 p-4">
+                  <div className="rounded-3xl border border-amber-300/30 bg-amber-300/10 p-3.5 sm:p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/80">Q1 End</p>
-                    <h3 className="mt-2 text-xl font-bold">{getShortEventLabel(quarterFinale.id, quarterFinale.name)}</h3>
+                    <h3 className="mt-2 text-lg font-bold sm:text-xl">{getShortEventLabel(quarterFinale.id, quarterFinale.name)}</h3>
                     <p className="mt-1 text-sm text-zinc-300">{quarterFinale.name}</p>
                   </div>
                 )}
@@ -335,7 +341,7 @@ function ContestsContent() {
             )}
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-            <div className="rounded-2xl border border-white/10 bg-[#0a1018]/90 p-4">
+            <div className="rounded-2xl border border-white/10 bg-[#0a1018]/90 p-3 sm:p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">My Lineup</p>
                 <p className="text-xs text-zinc-500">{savedLineupSummary.golfers.length} selected</p>
@@ -345,15 +351,15 @@ function ContestsContent() {
                   {savedLineupSummary.golfers.map((golfer, idx) => (
                     <div
                       key={golfer.golferId}
-                      className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 text-sm"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 text-sm"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
                         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-zinc-200">
                           {idx + 1}
                         </span>
-                        <span className="font-medium text-zinc-100">{golfer.name}</span>
+                        <span className="truncate font-medium text-zinc-100">{golfer.name}</span>
                       </div>
-                      <span className="font-semibold text-zinc-300">${golfer.salary.toLocaleString()}</span>
+                      <span className="shrink-0 font-semibold text-zinc-300">${golfer.salary.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -365,7 +371,7 @@ function ContestsContent() {
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-2 gap-2.5 text-sm sm:gap-3">
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                   <p className="text-xs uppercase tracking-wide text-zinc-500">Roster</p>
                   <p className="mt-1 font-semibold text-zinc-100">{contest.rosterSize} golfers</p>
