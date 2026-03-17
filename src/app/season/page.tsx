@@ -19,9 +19,9 @@ function getTierBadgeClass(tier: ScheduleEvent['tier']) {
 }
 
 function getTierBadgeLabel(tier: ScheduleEvent['tier']) {
-  if (tier === 'Signature') return 'SIG';
-  if (tier === 'Major') return 'MAJ';
-  return 'STD';
+  if (tier === 'Signature') return 'Signature';
+  if (tier === 'Major') return 'Major';
+  return 'Standard';
 }
 
 function getRankLabel(rank: number | null): string {
@@ -120,6 +120,9 @@ export default function SeasonPage() {
                         <p className="mt-0.5 text-xs font-bold text-zinc-50">
                           {entry.finishByEventId[column.eventId] ?? '—'}
                         </p>
+                        <p className="truncate text-[8px] font-semibold text-zinc-300">
+                          {getTierBadgeLabel(column.tier)}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -146,7 +149,7 @@ export default function SeasonPage() {
                       <th key={column.eventId} className="px-1.5 py-2 text-center sm:px-3 sm:py-3">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-[11px] leading-tight sm:text-sm">{column.shortLabel}</span>
-                          <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500 sm:text-[10px]">
+                          <span className="text-[9px] font-semibold text-zinc-500 sm:text-[10px]">
                             {getTierBadgeLabel(column.tier)}
                           </span>
                         </div>
