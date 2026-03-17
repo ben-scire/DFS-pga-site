@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trophy } from 'lucide-react';
 import MainTabsHeader from '@/components/main-tabs-header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { subscribeAuthSession, type AuthSession } from '@/lib/firebase-auth';
 import { getSeasonEventColumns, getSeasonStandingsRows, type ScheduleEvent } from '@/lib/season-display';
 
@@ -22,6 +22,17 @@ function getTierBadgeLabel(tier: ScheduleEvent['tier']) {
   if (tier === 'Signature') return 'SIG';
   if (tier === 'Major') return 'MAJ';
   return 'STD';
+}
+
+function getRankLabel(rank: number | null): string {
+  if (!rank || rank < 1) return '--';
+  const remainder100 = rank % 100;
+  if (remainder100 >= 11 && remainder100 <= 13) return `${rank}th`;
+  const remainder10 = rank % 10;
+  if (remainder10 === 1) return `${rank}st`;
+  if (remainder10 === 2) return `${rank}nd`;
+  if (remainder10 === 3) return `${rank}rd`;
+  return `${rank}th`;
 }
 
 function getMobileRowTone(rank: number | null) {
@@ -68,57 +79,45 @@ export default function SeasonPage() {
         <div className="absolute -right-16 top-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl space-y-4">
+      <div className="relative mx-auto max-w-6xl space-y-3.5">
         <MainTabsHeader session={session} activeTab="season" />
 
-        <header className="rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-[#101a2c] via-[#0b1322] to-[#080d15] p-4 shadow-[0_20px_80px_rgba(0,0,0,0.5)] sm:p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200/70">5x5 Global</p>
-          <h1 className="mt-2 text-[2.7rem] font-bold leading-none tracking-tight sm:text-3xl">Season Standings</h1>
-          <p className="mt-3 max-w-3xl text-base text-zinc-400 sm:mt-2 sm:text-sm">Championship points first, with each completed Q1 finish shown from most recent to oldest.</p>
-        </header>
-
         <Card className="rounded-3xl border border-cyan-300/20 bg-[#0b1322]/90 text-zinc-100">
-          <CardHeader>
+          <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-cyan-300" />
-              <CardTitle>Overall Standings</CardTitle>
+              <CardTitle>Season Standings</CardTitle>
             </div>
-            <CardDescription className="text-zinc-400">
-              Ranked by championship points, with weekly fantasy points retained only as the internal tiebreak.
-            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             <div className="space-y-2 md:hidden">
               {standings.map((entry) => (
                 <div
                   key={entry.entryId}
-                  className={`rounded-3xl border p-3 ${getMobileRowTone(entry.rank)}`}
+                  className={`rounded-2xl border p-2.5 ${getMobileRowTone(entry.rank)}`}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-white/10 bg-white/10 px-2 text-xs font-semibold text-zinc-100">
-                          {entry.rank ?? '--'}
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/10 bg-white/10 px-1.5 text-[10px] font-semibold text-zinc-100">
+                          {getRankLabel(entry.rank)}
                         </span>
-                        <p className="truncate text-base font-semibold text-zinc-50">{entry.displayName}</p>
+                        <p className="truncate text-sm font-semibold text-zinc-50">{entry.displayName}</p>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-right">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-100/70">Champ</p>
-                      <p className="text-sm font-bold text-cyan-100">{entry.championshipPoints ?? '--'}</p>
-                    </div>
+                    <p className="shrink-0 text-sm font-extrabold text-cyan-300">{entry.championshipPoints ?? '--'} pts</p>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-3 gap-2">
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
                     {eventColumns.map((column) => (
                       <div
                         key={`${entry.entryId}-mobile-${column.eventId}`}
-                        className={`rounded-2xl border px-2 py-2 text-center ${getTierBadgeClass(column.tier)}`}
+                        className={`rounded-lg border px-1.5 py-1.5 text-center ${getTierBadgeClass(column.tier)}`}
                       >
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">
+                        <p className="truncate text-[9px] font-semibold uppercase tracking-[0.1em]">
                           {column.shortLabel}
                         </p>
-                        <p className="mt-1 text-sm font-bold text-zinc-50">
+                        <p className="mt-0.5 text-xs font-bold text-zinc-50">
                           {entry.finishByEventId[column.eventId] ?? '—'}
                         </p>
                       </div>
@@ -129,13 +128,13 @@ export default function SeasonPage() {
             </div>
 
             <div className="hidden overflow-x-auto rounded-2xl border border-white/10 md:block">
-              <table className="w-full min-w-[620px] table-fixed text-xs sm:min-w-[760px] sm:text-sm">
+              <table className="w-full min-w-[620px] table-fixed text-xs sm:min-w-[760px]">
                 <colgroup>
-                  <col className="w-[56px] sm:w-[72px]" />
-                  <col className="w-[132px] sm:w-[188px]" />
-                  <col className="w-[76px] sm:w-[100px]" />
+                  <col className="w-[56px] sm:w-[68px]" />
+                  <col className="w-[132px] sm:w-[172px]" />
+                  <col className="w-[76px] sm:w-[92px]" />
                   {eventColumns.map((column) => (
-                    <col key={`col-${column.eventId}`} className="w-[86px] sm:w-[124px]" />
+                    <col key={`col-${column.eventId}`} className="w-[82px] sm:w-[112px]" />
                   ))}
                 </colgroup>
                 <thead className="bg-white/[0.04] text-zinc-300">
@@ -147,9 +146,8 @@ export default function SeasonPage() {
                       <th key={column.eventId} className="px-1.5 py-2 text-center sm:px-3 sm:py-3">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-[11px] leading-tight sm:text-sm">{column.shortLabel}</span>
-                          <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] sm:px-2 sm:text-[10px] sm:tracking-[0.18em] ${getTierBadgeClass(column.tier)}`}>
-                            <span className="sm:hidden">{getTierBadgeLabel(column.tier)}</span>
-                            <span className="hidden sm:inline">{column.tier}</span>
+                          <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500 sm:text-[10px]">
+                            {getTierBadgeLabel(column.tier)}
                           </span>
                         </div>
                       </th>
