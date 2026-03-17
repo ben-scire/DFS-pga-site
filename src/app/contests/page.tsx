@@ -56,8 +56,14 @@ function getFallbackContest(contestId: string): WeeklyLeagueContest {
 
 function getPodiumTone(place: number) {
   if (place === 1) return 'from-amber-300/30 via-amber-200/20 to-[#181f2f] border-amber-200/40';
-  if (place === 2) return 'from-slate-200/20 via-slate-100/10 to-[#151d2a] border-slate-200/30';
+  if (place === 2) return 'from-slate-100/40 via-slate-200/24 to-[#1b2535] border-slate-100/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)]';
   return 'from-orange-300/20 via-orange-200/10 to-[#151c28] border-orange-200/30';
+}
+
+function getEventTierBadgeClass(tier: 'Standard' | 'Signature' | 'Major') {
+  if (tier === 'Signature') return 'border-amber-300/35 bg-amber-300/12 text-amber-100';
+  if (tier === 'Major') return 'border-rose-300/35 bg-rose-300/12 text-rose-100';
+  return 'border-cyan-300/35 bg-cyan-300/12 text-cyan-100';
 }
 
 function getPodiumPlaceLabel(rank: number | null): string {
@@ -201,13 +207,13 @@ function ContestsContent() {
               })}
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+            <div className="rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/14 via-blue-400/8 to-[#0d1420] p-3 sm:p-4">
               <div className="mb-3">
                 <h3 className="text-lg font-semibold">In the Hunt</h3>
               </div>
               <div className="space-y-2">
                 {inTheHunt.map((entry) => (
-                  <div key={entry.entryId} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0f1622] px-3 py-2">
+                  <div key={entry.entryId} className="flex items-center justify-between gap-3 rounded-2xl border border-cyan-300/15 bg-[#0d1626]/90 px-3 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-zinc-100 sm:text-base">#{entry.rank} {entry.displayName}</p>
                       {latestColumn && (
@@ -225,56 +231,37 @@ function ContestsContent() {
         </Card>
 
         <div className="space-y-4">
-            <Card className="rounded-3xl border border-white/10 bg-gradient-to-b from-[#131c27] to-[#0c1218] text-zinc-100">
-              <CardHeader>
-                <CardTitle>Up Next</CardTitle>
-                <CardDescription className="text-zinc-400">The next stop in Q1, with the quarter finale in view.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-0">
-                {nextEvent && (
-                  <div className="rounded-3xl border border-emerald-300/30 bg-emerald-300/10 p-3.5 sm:p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">Next Event</p>
-                    <h3 className="mt-2 text-lg font-bold sm:text-xl">{getShortEventLabel(nextEvent.id, nextEvent.name)}</h3>
-                    <p className="mt-1 text-sm text-zinc-300">{nextEvent.name}</p>
+          <Card className="rounded-3xl border border-white/10 bg-[#0c1218]/95 text-zinc-100">
+            <CardHeader>
+              <CardTitle>Q1 Runway</CardTitle>
+              <CardDescription className="text-zinc-400">Remaining Q1 events after The Players.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {q1Remaining.map((event) => (
+                <div key={event.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <div>
+                    <p className="font-medium">{getShortEventLabel(event.id, event.name)}</p>
+                    <p className="text-[11px] text-zinc-500">{event.name}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                      {event.tier} Event
+                    </p>
                   </div>
-                )}
-                {quarterFinale && (
-                  <div className="rounded-3xl border border-amber-300/30 bg-amber-300/10 p-3.5 sm:p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/80">Q1 End</p>
-                    <h3 className="mt-2 text-lg font-bold sm:text-xl">{getShortEventLabel(quarterFinale.id, quarterFinale.name)}</h3>
-                    <p className="mt-1 text-sm text-zinc-300">{quarterFinale.name}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getEventTierBadgeClass(event.tier)}>{event.tier}</Badge>
+                    {event.id === nextEvent?.id && (
+                      <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100">Next</Badge>
+                    )}
+                    {event.isQuarterFinale && (
+                      <Badge className="border border-amber-300/30 bg-amber-300/10 text-amber-100">Finale</Badge>
+                    )}
+                    {!event.isQuarterFinale && event.id !== nextEvent?.id && (
+                      <ChevronRight className="h-4 w-4 text-zinc-500" />
+                    )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-3xl border border-white/10 bg-[#0c1218]/95 text-zinc-100">
-              <CardHeader>
-                <CardTitle>Q1 Runway</CardTitle>
-                <CardDescription className="text-zinc-400">Remaining Q1 events after The Players.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {q1Remaining.map((event) => (
-                  <div key={event.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                    <div>
-                      <p className="font-medium">{getShortEventLabel(event.id, event.name)}</p>
-                      <p className="text-xs text-zinc-500">{event.name}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {event.id === nextEvent?.id && (
-                        <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100">Next</Badge>
-                      )}
-                      {event.isQuarterFinale && (
-                        <Badge className="border border-amber-300/30 bg-amber-300/10 text-amber-100">Finale</Badge>
-                      )}
-                      {!event.isQuarterFinale && event.id !== nextEvent?.id && (
-                        <ChevronRight className="h-4 w-4 text-zinc-500" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
 
         <Card className="rounded-3xl border border-white/10 bg-[#0b1118]/95 text-zinc-100 shadow-[0_16px_55px_rgba(0,0,0,0.3)]">
