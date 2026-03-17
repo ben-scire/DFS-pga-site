@@ -42,6 +42,27 @@ function getMobileRowTone(rank: number | null) {
   return 'border-white/10 bg-white/[0.03]';
 }
 
+function formatFantasyPoints(value: number | null): string {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '--';
+  const hasFraction = Math.abs(value % 1) > Number.EPSILON;
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: hasFraction ? 1 : 0,
+    maximumFractionDigits: 1,
+  });
+}
+
+function formatNetDollars(value: number | null): string {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '--';
+  const hasFraction = Math.abs(value % 1) > Number.EPSILON;
+  const absValue = Math.abs(value).toLocaleString(undefined, {
+    minimumFractionDigits: hasFraction ? 1 : 0,
+    maximumFractionDigits: 1,
+  });
+  if (value > 0) return `+$${absValue}`;
+  if (value < 0) return `-$${absValue}`;
+  return '$0';
+}
+
 export default function SeasonPage() {
   const router = useRouter();
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -96,16 +117,20 @@ export default function SeasonPage() {
                   key={entry.entryId}
                   className={`rounded-2xl border p-2.5 ${getMobileRowTone(entry.rank)}`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/10 bg-white/10 px-1.5 text-[10px] font-semibold text-zinc-100">
-                          {getRankLabel(entry.rank)}
-                        </span>
-                        <p className="truncate text-sm font-semibold text-zinc-50">{entry.displayName}</p>
-                      </div>
-                    </div>
-                    <p className="shrink-0 text-sm font-extrabold text-cyan-300">{entry.championshipPoints ?? '--'} pts</p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/10 bg-white/10 px-1.5 text-[10px] font-semibold text-zinc-100">
+                      {getRankLabel(entry.rank)}
+                    </span>
+                    <p className="min-w-[96px] flex-1 truncate text-sm font-semibold text-zinc-50">{entry.displayName}</p>
+                    <span className="inline-flex items-center rounded-md border border-cyan-300/40 bg-cyan-300/15 px-2 py-0.5 text-[11px] font-bold text-cyan-200">
+                      {entry.championshipPoints ?? '--'} pts
+                    </span>
+                    <span className="inline-flex items-center rounded-md border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-zinc-100">
+                      {formatFantasyPoints(entry.weeklyFantasyPointsTotal)} FP
+                    </span>
+                    <span className="inline-flex items-center rounded-md border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-zinc-100">
+                      {formatNetDollars(entry.netDollars)}
+                    </span>
                   </div>
 
                   <div className="mt-2 grid grid-cols-3 gap-1.5">
@@ -131,11 +156,13 @@ export default function SeasonPage() {
             </div>
 
             <div className="hidden overflow-x-auto rounded-2xl border border-white/10 md:block">
-              <table className="w-full min-w-[620px] table-fixed text-xs sm:min-w-[760px]">
+              <table className="w-full min-w-[760px] table-fixed text-xs sm:min-w-[980px]">
                 <colgroup>
                   <col className="w-[56px] sm:w-[68px]" />
                   <col className="w-[132px] sm:w-[172px]" />
                   <col className="w-[76px] sm:w-[92px]" />
+                  <col className="w-[90px] sm:w-[108px]" />
+                  <col className="w-[86px] sm:w-[104px]" />
                   {eventColumns.map((column) => (
                     <col key={`col-${column.eventId}`} className="w-[82px] sm:w-[112px]" />
                   ))}
@@ -145,6 +172,8 @@ export default function SeasonPage() {
                     <th className="px-2 py-2 text-left sm:px-3 sm:py-3">Rank</th>
                     <th className="px-2 py-2 text-left sm:px-3 sm:py-3">User</th>
                     <th className="px-2 py-2 text-right sm:px-3 sm:py-3">Champ</th>
+                    <th className="px-2 py-2 text-right sm:px-3 sm:py-3">Total FP</th>
+                    <th className="px-2 py-2 text-right sm:px-3 sm:py-3">Net $</th>
                     {eventColumns.map((column) => (
                       <th key={column.eventId} className="px-1.5 py-2 text-center sm:px-3 sm:py-3">
                         <div className="flex flex-col items-center gap-1">
@@ -165,6 +194,12 @@ export default function SeasonPage() {
                         <span className="block truncate">{entry.displayName}</span>
                       </td>
                       <td className="px-2 py-2.5 text-right font-semibold text-cyan-300 sm:px-3 sm:py-3">{entry.championshipPoints ?? '--'}</td>
+                      <td className="px-2 py-2.5 text-right font-semibold text-zinc-100 sm:px-3 sm:py-3">{formatFantasyPoints(entry.weeklyFantasyPointsTotal)}</td>
+                      <td className={`px-2 py-2.5 text-right font-semibold sm:px-3 sm:py-3 ${
+                        typeof entry.netDollars === 'number'
+                          ? (entry.netDollars > 0 ? 'text-emerald-300' : entry.netDollars < 0 ? 'text-rose-300' : 'text-zinc-200')
+                          : 'text-zinc-400'
+                      }`}>{formatNetDollars(entry.netDollars)}</td>
                       {eventColumns.map((column) => (
                         <td key={`${entry.entryId}:${column.eventId}`} className="px-1.5 py-2.5 text-center sm:px-3 sm:py-3">
                           {entry.finishByEventId[column.eventId] ?? '—'}

@@ -194,6 +194,18 @@ export function getDefaultContestId() {
   return current?.id ?? 'week-2-arnold-palmer';
 }
 
+export function getLatestFinishedContestId() {
+  const latestFinished = WEEKLY_CONTESTS
+    .filter((contest) => contest.status === 'final')
+    .sort((left, right) => (
+      new Date(right.lockAtIso).getTime() - new Date(left.lockAtIso).getTime()
+      || right.weekNumber - left.weekNumber
+    ))
+    .at(0);
+
+  return latestFinished?.id ?? getDefaultContestId();
+}
+
 export function getDefaultPlayerPool(contestId: string) {
   return DEFAULT_PLAYER_POOL_BY_CONTEST[contestId] ?? [];
 }

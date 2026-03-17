@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { RefreshCw, Trophy } from 'lucide-react';
 import MainTabsHeader from '@/components/main-tabs-header';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ import {
 } from '@/lib/firestore-lineups';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
 import { TEST_USERS } from '@/lib/test-users';
-import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById, WEEKLY_CONTESTS } from '@/lib/weekly-lineup-seed';
+import { getDefaultPlayerPool, getLatestFinishedContestId, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool } from '@/lib/weekly-lineup-storage';
 
 interface LeaderboardRow {
@@ -104,9 +104,7 @@ function getRankTone(rank: number): string {
 
 function WeekStandingsContent() {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? getDefaultContestId();
+  const contestId = getLatestFinishedContestId();
 
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -117,10 +115,6 @@ function WeekStandingsContent() {
   const isAdmin = session?.isAdmin ?? false;
   const hideLineupPlayerNames = !isAdmin && (contest ? Date.now() < new Date(contest.lockAtIso).getTime() : false);
   const viewerUserId = session?.userSlug ?? 'guest';
-  const contestOptions = useMemo(() => {
-    const ids = [contestId, ...WEEKLY_CONTESTS.map((item) => item.id)];
-    return Array.from(new Set(ids)).map((id) => ({ id, label: getContestLabel(id) }));
-  }, [contestId]);
 
   const [playerPool, setPlayerPool] = useState<PlayerPoolGolfer[]>([]);
   const [lineups, setLineups] = useState<LeaderboardLineupEntry[]>([]);
@@ -359,25 +353,9 @@ function WeekStandingsContent() {
               <h1 className="mt-2 text-3xl font-bold tracking-tight">Week Standings</h1>
               <p className="mt-2 text-sm text-cyan-100/75">{contestName}</p>
             </div>
-            <label className="inline-flex items-center rounded-md border border-cyan-200/30 bg-cyan-100/10 px-2 text-sm text-zinc-100">
-              <span className="mr-2 text-xs uppercase tracking-wide text-cyan-100/70">Week</span>
-              <select
-                value={contestId}
-                onChange={(event) => {
-                  const nextContestId = event.target.value;
-                  const next = new URLSearchParams(searchParams.toString());
-                  next.set('contestId', nextContestId);
-                  router.push(`${pathname}?${next.toString()}`);
-                }}
-                className="bg-transparent py-2 text-sm text-zinc-100 outline-none"
-              >
-                {contestOptions.map((option) => (
-                  <option key={option.id} value={option.id} className="bg-[#102137]">
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <span className="inline-flex items-center rounded-md border border-cyan-200/30 bg-cyan-100/10 px-3 py-2 text-xs uppercase tracking-wide text-cyan-100/80">
+              Most Recent Finished Week
+            </span>
           </div>
         </header>
 
