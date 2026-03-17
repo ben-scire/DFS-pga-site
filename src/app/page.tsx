@@ -16,7 +16,7 @@ import { toast } from '@/hooks/use-toast';
 export default function LoginPage() {
   const router = useRouter();
   const defaultContestId = getDefaultContestId();
-  const defaultStandingsPath = `/week-standings?contestId=${encodeURIComponent(defaultContestId)}`;
+  const defaultHomePath = `/contests?contestId=${encodeURIComponent(defaultContestId)}`;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -26,7 +26,7 @@ export default function LoginPage() {
   useEffect(() => {
     const unsubscribe = subscribeAuthSession((session) => {
       if (session) {
-        router.replace(defaultStandingsPath);
+        router.replace(defaultHomePath);
         return;
       }
       setCheckingSession(false);
@@ -35,7 +35,7 @@ export default function LoginPage() {
     return () => {
       unsubscribe();
     };
-  }, [defaultStandingsPath, router]);
+  }, [defaultHomePath, router]);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -44,7 +44,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await signInOrFirstClaim(username, password);
-      router.replace(defaultStandingsPath);
+      router.replace(defaultHomePath);
     } catch (error) {
       toast({
         title: 'Sign-in failed',
