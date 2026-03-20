@@ -345,10 +345,27 @@ function buildTournamentStatsUrl(liveUrl: string): string | null {
     return resolveDataGolfUrl(override);
   }
 
-  if (liveUrl.includes('live-hole-scores')) {
-    return liveUrl.replace('live-hole-scores', 'live-tournament-stats');
+  try {
+    const live = new URL(liveUrl);
+    const stats = new URL('https://feeds.datagolf.com/preds/live-tournament-stats');
+    const tour = live.searchParams.get('tour');
+    if (tour) {
+      stats.searchParams.set('tour', tour);
+    }
+    stats.searchParams.set('round', 'event_cumulative');
+    stats.searchParams.set('display', 'value');
+    stats.searchParams.set('file_format', live.searchParams.get('file_format') || 'json');
+
+    if (live.searchParams.has('key')) {
+      stats.searchParams.set('key', live.searchParams.get('key') || '');
+    } else {
+      stats.searchParams.set('key', '{key}');
+    }
+
+    return resolveDataGolfUrl(stats.toString());
+  } catch {
+    return null;
   }
-  return null;
 }
 
 function initFirebaseAdmin() {
