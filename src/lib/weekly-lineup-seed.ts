@@ -1,10 +1,25 @@
 import type { PlayerPoolGolfer, WeeklyLeagueContest } from '@/lib/lineup-builder-types';
 import { WEEK_2_ARNOLD_PALMER_POOL } from '@/lib/weekly-player-pools/week-2-arnold-palmer';
 import { WEEK_3_PLAYERS_POOL } from '@/lib/weekly-player-pools/week-3-players';
+import { WEEK_4_VALSPAR_POOL } from '@/lib/weekly-player-pools/week-4-valspar';
 
 const DEFAULT_HEADSHOT = 'https://placehold.co/80x80/png';
 
 export const WEEKLY_CONTESTS: WeeklyLeagueContest[] = [
+  {
+    id: 'week-4-valspar',
+    weekNumber: 4,
+    name: 'WEEK 4 VALSPAR',
+    hostLabel: 'by dylangoody',
+    entryFeeDisplay: '$0',
+    lockAtIso: '2026-03-19T11:40:00.000Z',
+    status: 'live',
+    lockDisabled: true,
+    testMode: true,
+    salaryCap: 50000,
+    rosterSize: 6,
+    entryNumberLabel: '20/25',
+  },
   {
     id: 'week-3-players',
     weekNumber: 3,
@@ -50,6 +65,7 @@ export const WEEKLY_CONTESTS: WeeklyLeagueContest[] = [
 ];
 
 export const DEFAULT_PLAYER_POOL_BY_CONTEST: Record<string, PlayerPoolGolfer[]> = {
+  'week-4-valspar': WEEK_4_VALSPAR_POOL,
   'week-3-players': WEEK_3_PLAYERS_POOL,
   'week-2-arnold-palmer': WEEK_2_ARNOLD_PALMER_POOL,
   'week-1-cognizant': [
@@ -191,7 +207,7 @@ export function getDefaultContestId() {
   const current = WEEKLY_CONTESTS.find((contest) => contest.status === 'live')
     ?? WEEKLY_CONTESTS.find((contest) => contest.status === 'open')
     ?? WEEKLY_CONTESTS[0];
-  return current?.id ?? 'week-2-arnold-palmer';
+  return current?.id ?? 'week-4-valspar';
 }
 
 export function getLatestFinishedContestId() {

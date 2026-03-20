@@ -1,8 +1,16 @@
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import { config as loadDotenv } from 'dotenv';
 import { applicationDefault, cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { getApp as getClientApp, getApps as getClientApps, initializeApp as initializeClientApp } from 'firebase/app';
+import {
+  doc as clientDoc,
+  getFirestore as getClientFirestore,
+  serverTimestamp as clientServerTimestamp,
+  setDoc as clientSetDoc,
+} from 'firebase/firestore';
 import {
   normalizeNameForMatching,
   parseContestStandingsCsv,
@@ -32,6 +40,21 @@ type PreparedImportRow = {
 type PreparedImportError = {
   entryName: string;
   reason: string;
+};
+
+type LineupDocPayload = {
+  contestId: string;
+  userSlug: string;
+  userDisplayName: string;
+  lineupGolferIds: string[];
+  submittedAtIso: string;
+  lastEditedAtIso: string;
+  source: 'web-test';
+  version: 1;
+  updatedAt?: unknown;
+  officialWeeklyFantasyPoints?: number;
+  officialPointsSource?: 'dk-standings-csv';
+  officialPointsImportedAtIso?: string;
 };
 
 async function main() {
@@ -88,33 +111,11 @@ async function main() {
     return;
   }
 
-  initFirebaseAdmin();
-  const db = getFirestore();
+  const writer = createLineupWriter();
   const nowIso = new Date().toISOString();
 
   for (const row of preparedRows) {
-    const ref = db.collection('test_lineups').doc(options.contestId).collection('entries').doc(row.userSlug);
-    await ref.set(
-      {
-        contestId: options.contestId,
-        userSlug: row.userSlug,
-        userDisplayName: row.userDisplayName,
-        lineupGolferIds: row.lineupGolferIds,
-        submittedAtIso: nowIso,
-        lastEditedAtIso: nowIso,
-        updatedAt: FieldValue.serverTimestamp(),
-        source: 'web-test',
-        version: 1,
-        ...(typeof row.points === 'number'
-          ? {
-              officialWeeklyFantasyPoints: Number(row.points.toFixed(1)),
-              officialPointsSource: 'dk-standings-csv',
-              officialPointsImportedAtIso: nowIso,
-            }
-          : {}),
-      },
-      { merge: true }
-    );
+    await writer.write(options.contestId, row, nowIso);
   }
 
   console.log(`\nWrote ${preparedRows.length} lineup docs to test_lineups/${options.contestId}/entries.`);
@@ -127,7 +128,7 @@ function loadEnvFiles() {
 
 function parseArgs(argv: string[]): CliOptions {
   let csvPath = '';
-  let contestId = 'week-2-arnold-palmer';
+  let contestId = 'week-4-valspar';
   let write = false;
   let allowUnmapped = false;
   const entryOverrides: Record<string, string> = {};
@@ -188,7 +189,7 @@ function printHelp() {
   console.log(`Import contest standings CSV into Firestore test_lineups.
 
 Usage:
-  tsx scripts/import-contest-standings.ts --csv /path/to/contest-standings.csv [--contest-id week-2-arnold-palmer] [--write] [--allow-unmapped]
+  tsx scripts/import-contest-standings.ts --csv /path/to/contest-standings.csv [--contest-id week-4-valspar] [--write] [--allow-unmapped]
   tsx scripts/import-contest-standings.ts --csv /path/to/file.csv --map cm30=coach --map capc=ceec --write
 
 Defaults:
@@ -223,6 +224,109 @@ function initFirebaseAdmin() {
   return initializeApp({
     credential: applicationDefault(),
   });
+}
+
+function hasExplicitAdminCredentialConfig(): boolean {
+  const rawJson = (process.env.FIREBASE_SERVICE_ACCOUNT_JSON ?? '').trim();
+  if (rawJson) return true;
+
+  const credentialsPath = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? '').trim();
+  if (!credentialsPath) return false;
+
+  try {
+    const resolved = path.resolve(process.cwd(), credentialsPath);
+    const raw = fsSync.readFileSync(resolved, 'utf8');
+    const parsed = JSON.parse(raw) as { type?: string; private_key?: string };
+    return parsed.type === 'service_account' && typeof parsed.private_key === 'string' && parsed.private_key.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function readFirebasePublicConfig() {
+  return {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '',
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '',
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '',
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '',
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '',
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? '',
+  };
+}
+
+function isFirebasePublicConfigComplete(config: ReturnType<typeof readFirebasePublicConfig>): boolean {
+  return Object.values(config).every((value) => typeof value === 'string' && value.trim().length > 0);
+}
+
+function buildLineupDocPayload(contestId: string, row: PreparedImportRow, nowIso: string): LineupDocPayload {
+  return {
+    contestId,
+    userSlug: row.userSlug,
+    userDisplayName: row.userDisplayName,
+    lineupGolferIds: row.lineupGolferIds,
+    submittedAtIso: nowIso,
+    lastEditedAtIso: nowIso,
+    source: 'web-test',
+    version: 1,
+    ...(typeof row.points === 'number'
+      ? {
+          officialWeeklyFantasyPoints: Number(row.points.toFixed(1)),
+          officialPointsSource: 'dk-standings-csv' as const,
+          officialPointsImportedAtIso: nowIso,
+        }
+      : {}),
+  };
+}
+
+function createLineupWriter(): {
+  write: (contestId: string, row: PreparedImportRow, nowIso: string) => Promise<void>;
+} {
+  if (hasExplicitAdminCredentialConfig()) {
+    initFirebaseAdmin();
+    const db = getFirestore();
+    console.log('Write mode: firebase-admin');
+    return {
+      async write(contestId, row, nowIso) {
+        const payload = buildLineupDocPayload(contestId, row, nowIso);
+        await db
+          .collection('test_lineups')
+          .doc(contestId)
+          .collection('entries')
+          .doc(row.userSlug)
+          .set(
+            {
+              ...payload,
+              updatedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+      },
+    };
+  }
+
+  const config = readFirebasePublicConfig();
+  if (!isFirebasePublicConfigComplete(config)) {
+    throw new Error(
+      'No explicit Firebase Admin credential found, and NEXT_PUBLIC_FIREBASE_* config is incomplete for public Firestore writes.'
+    );
+  }
+
+  const app = getClientApps().length ? getClientApp() : initializeClientApp(config);
+  const db = getClientFirestore(app);
+  console.log('Write mode: firebase-client');
+  return {
+    async write(contestId, row, nowIso) {
+      const payload = buildLineupDocPayload(contestId, row, nowIso);
+      await clientSetDoc(
+        clientDoc(db, 'test_lineups', contestId, 'entries', row.userSlug),
+        {
+          ...payload,
+          updatedAt: clientServerTimestamp(),
+        },
+        { merge: true }
+      );
+    },
+  };
 }
 
 function buildGolferLookup(

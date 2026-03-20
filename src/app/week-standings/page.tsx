@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { RefreshCw, Trophy } from 'lucide-react';
 import MainTabsHeader from '@/components/main-tabs-header';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ import {
 } from '@/lib/firestore-lineups';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
 import { TEST_USERS } from '@/lib/test-users';
-import { getDefaultPlayerPool, getLatestFinishedContestId, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
+import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool } from '@/lib/weekly-lineup-storage';
 
 interface LeaderboardRow {
@@ -104,7 +104,8 @@ function getRankTone(rank: number): string {
 
 function WeekStandingsContent() {
   const router = useRouter();
-  const contestId = getLatestFinishedContestId();
+  const searchParams = useSearchParams();
+  const contestId = searchParams.get('contestId')?.trim() || getDefaultContestId();
 
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -112,6 +113,13 @@ function WeekStandingsContent() {
   const contest = getWeeklyContestById(contestId);
   const contestName = contest?.name ?? getContestLabel(contestId);
   const isLiveContest = contest?.status === 'live';
+  const contestContextLabel = isLiveContest
+    ? 'Current Live Week'
+    : contest?.status === 'open'
+      ? 'Current Open Week'
+      : contest?.status === 'final'
+        ? 'Finished Week'
+        : 'Selected Contest';
   const isAdmin = session?.isAdmin ?? false;
   const hideLineupPlayerNames = !isAdmin && (contest ? Date.now() < new Date(contest.lockAtIso).getTime() : false);
   const viewerUserId = session?.userSlug ?? 'guest';
@@ -354,7 +362,7 @@ function WeekStandingsContent() {
               <p className="mt-2 text-sm text-cyan-100/75">{contestName}</p>
             </div>
             <span className="inline-flex items-center rounded-md border border-cyan-200/30 bg-cyan-100/10 px-3 py-2 text-xs uppercase tracking-wide text-cyan-100/80">
-              Most Recent Finished Week
+              {contestContextLabel}
             </span>
           </div>
         </header>
