@@ -19,6 +19,7 @@ const PAYMENT_FIELDS: Array<{ field: PaymentStatusField; shortLabel: string; lab
   { field: 'week1Paid', shortLabel: 'W1', label: 'W1 ($10)' },
   { field: 'week2Paid', shortLabel: 'W2', label: 'W2 ($10)' },
   { field: 'week3Paid', shortLabel: 'W3', label: 'W3 ($10)' },
+  { field: 'week4Paid', shortLabel: 'W4', label: 'W4 ($10)' },
   { field: 'quarter1Paid', shortLabel: 'Q1', label: 'Q1 ($50)' },
 ];
 
@@ -64,6 +65,7 @@ export default function AdminPaymentsPage() {
         week1Paid: false,
         week2Paid: false,
         week3Paid: false,
+        week4Paid: false,
         quarter1Paid: false,
       },
     }));
@@ -111,7 +113,7 @@ export default function AdminPaymentsPage() {
                     <p className="font-medium">{user.name}</p>
                     <p className="text-xs text-zinc-500">{user.id}</p>
                   </div>
-                  <div className="grid grid-cols-4 gap-2 text-xs">
+                  <div className="grid grid-cols-5 gap-2 text-xs">
                     {PAYMENT_FIELDS.map(({ field, shortLabel }) => (
                       <label
                         key={field}
