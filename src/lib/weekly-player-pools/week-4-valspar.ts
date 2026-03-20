@@ -22,7 +22,7 @@ export const WEEK_4_VALSPAR_POOL: PlayerPoolGolfer[] = [
   makeGolfer('w4-blades-brown', 'Blades Brown'),
   makeGolfer('w4-brooks-koepka', 'Brooks Koepka'),
   makeGolfer('w4-bud-cauley', 'Bud Cauley'),
-  makeGolfer('w4-cameron-phillips', 'Cameron Phillips'),
+  makeGolfer('w4-chandler-phillips', 'Chandler Phillips'),
   makeGolfer('w4-chad-ramey', 'Chad Ramey'),
   makeGolfer('w4-christiaan-bezuidenhout', 'Christiaan Bezuidenhout'),
   makeGolfer('w4-corey-conners', 'Corey Conners'),
