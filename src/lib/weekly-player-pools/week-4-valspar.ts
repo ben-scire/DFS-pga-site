@@ -1,0 +1,63 @@
+import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
+
+const DEFAULT_HEADSHOT = 'https://placehold.co/80x80/png';
+
+function makeGolfer(golferId: string, name: string): PlayerPoolGolfer {
+  return {
+    golferId,
+    name,
+    salary: 8000,
+    position: 'G',
+    headshotUrl: DEFAULT_HEADSHOT,
+    isActive: true,
+  };
+}
+
+export const WEEK_4_VALSPAR_POOL: PlayerPoolGolfer[] = [
+  makeGolfer('w4-aaron-rai', 'Aaron Rai'),
+  makeGolfer('w4-alex-smalley', 'Alex Smalley'),
+  makeGolfer('w4-austin-smotherman', 'Austin Smotherman'),
+  makeGolfer('w4-ben-griffin', 'Ben Griffin'),
+  makeGolfer('w4-billy-horschel', 'Billy Horschel'),
+  makeGolfer('w4-blades-brown', 'Blades Brown'),
+  makeGolfer('w4-brooks-koepka', 'Brooks Koepka'),
+  makeGolfer('w4-bud-cauley', 'Bud Cauley'),
+  makeGolfer('w4-cameron-phillips', 'Cameron Phillips'),
+  makeGolfer('w4-chad-ramey', 'Chad Ramey'),
+  makeGolfer('w4-christiaan-bezuidenhout', 'Christiaan Bezuidenhout'),
+  makeGolfer('w4-corey-conners', 'Corey Conners'),
+  makeGolfer('w4-david-ford', 'David Ford'),
+  makeGolfer('w4-davis-thompson', 'Davis Thompson'),
+  makeGolfer('w4-denny-mccarthy', 'Denny McCarthy'),
+  makeGolfer('w4-eric-cole', 'Eric Cole'),
+  makeGolfer('w4-isaiah-salinda', 'Isaiah Salinda'),
+  makeGolfer('w4-j-stanger', 'J. Stanger'),
+  makeGolfer('w4-jacob-bridgeman', 'Jacob Bridgeman'),
+  makeGolfer('w4-jeremy-paul', 'Jeremy Paul'),
+  makeGolfer('w4-jj-spaun', 'J.J. Spaun'),
+  makeGolfer('w4-joe-highsmith', 'Joe Highsmith'),
+  makeGolfer('w4-john-parry', 'John Parry'),
+  makeGolfer('w4-john-vanderlaan', 'John VanDerLaan'),
+  makeGolfer('w4-jordan-spieth', 'Jordan Spieth'),
+  makeGolfer('w4-justin-thomas', 'Justin Thomas'),
+  makeGolfer('w4-keegan-bradley', 'Keegan Bradley'),
+  makeGolfer('w4-matt-fitzpatrick', 'Matt Fitzpatrick'),
+  makeGolfer('w4-max-homa', 'Max Homa'),
+  makeGolfer('w4-michael-kim', 'Michael Kim'),
+  makeGolfer('w4-nick-taylor', 'Nick Taylor'),
+  makeGolfer('w4-nicolai-hojgaard', 'Nicolai Hojgaard'),
+  makeGolfer('w4-patrick-rodgers', 'Patrick Rodgers'),
+  makeGolfer('w4-pierceson-coody', 'Pierceson Coody'),
+  makeGolfer('w4-rasmus-hojgaard', 'Rasmus Hojgaard'),
+  makeGolfer('w4-ricky-castillo', 'Ricky Castillo'),
+  makeGolfer('w4-ryo-hisatsune', 'Ryo Hisatsune'),
+  makeGolfer('w4-sahith-theegala', 'Sahith Theegala'),
+  makeGolfer('w4-seamus-power', 'Seamus Power'),
+  makeGolfer('w4-taylor-moore', 'Taylor Moore'),
+  makeGolfer('w4-taylor-pendrith', 'Taylor Pendrith'),
+  makeGolfer('w4-tom-kim', 'Tom Kim'),
+  makeGolfer('w4-tony-finau', 'Tony Finau'),
+  makeGolfer('w4-viktor-hovland', 'Viktor Hovland'),
+  makeGolfer('w4-xander-schauffele', 'Xander Schauffele'),
+  makeGolfer('w4-zachary-bauchou', 'Zachary Bauchou'),
+];

@@ -30,7 +30,7 @@ service cloud.firestore {
     }
 
     function isAllowedContest(contestId) {
-      return contestId in ['week-1-cognizant', 'week-2-arnold-palmer', 'week-3-players'];
+      return contestId in ['week-1-cognizant', 'week-2-arnold-palmer', 'week-3-players', 'week-4-valspar'];
     }
 
     function isAdminUserSlug(userSlug) {
@@ -47,7 +47,10 @@ service cloud.firestore {
           'lastEditedAtIso',
           'updatedAt',
           'source',
-          'version'
+          'version',
+          'officialWeeklyFantasyPoints',
+          'officialPointsSource',
+          'officialPointsImportedAtIso'
         ]) &&
         data.contestId == contestId &&
         data.userSlug == userSlug &&
@@ -56,6 +59,9 @@ service cloud.firestore {
         data.lineupGolferIds.size() <= 6 &&
         data.lastEditedAtIso is string &&
         (!('submittedAtIso' in data) || data.submittedAtIso is string) &&
+        (!('officialWeeklyFantasyPoints' in data) || data.officialWeeklyFantasyPoints is int || data.officialWeeklyFantasyPoints is float) &&
+        (!('officialPointsSource' in data) || data.officialPointsSource == 'dk-standings-csv') &&
+        (!('officialPointsImportedAtIso' in data) || data.officialPointsImportedAtIso is string) &&
         data.source == 'web-test' &&
         data.version == 1;
     }

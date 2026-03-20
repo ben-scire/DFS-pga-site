@@ -1,9 +1,19 @@
 import { TEST_USER_DIRECTORY, TEST_USERS } from './test-users';
 import { normalizeNameForMatching } from './contest-standings-import';
 
-const ENTRY_NAME_TO_TEST_USER_SLUG: Record<string, string> = Object.fromEntries(
-  TEST_USER_DIRECTORY.map((user) => [user.entryName.trim().toLowerCase(), user.userSlug])
-);
+const EXTRA_ENTRY_NAME_ALIASES: Record<string, string> = {
+  alxmacdnld: 'amac',
+  castro: 'johncastronovo',
+  etrunney: 'jpetruney',
+  etunney: 'jpetruney',
+  neal: 'unccle-neal',
+  sam: 'sam.scire',
+};
+
+const ENTRY_NAME_TO_TEST_USER_SLUG: Record<string, string> = {
+  ...Object.fromEntries(TEST_USER_DIRECTORY.map((user) => [user.entryName.trim().toLowerCase(), user.userSlug])),
+  ...EXTRA_ENTRY_NAME_ALIASES,
+};
 
 const TEST_USERS_BY_SLUG = new Map(TEST_USERS.map((user) => [user.id, user]));
 
