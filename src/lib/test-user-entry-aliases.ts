@@ -5,7 +5,7 @@ const EXTRA_ENTRY_NAME_ALIASES: Record<string, string> = {
   alxmacdnld: 'amac',
   castro: 'johncastronovo',
   etrunney: 'jpetruney',
-  etunney: 'jpetruney',
+  etunney: 'eions',
   neal: 'unccle-neal',
   sam: 'sam.scire',
 };

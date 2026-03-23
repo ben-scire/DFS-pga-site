@@ -3,6 +3,7 @@ import scheduleData from '../../league-scoring/schedule.json';
 import weekOneData from '../../league-scoring/weekly-scores/week-1-cognizant.json';
 import weekTwoData from '../../league-scoring/weekly-scores/week-2-arnold-palmer.json';
 import weekThreeData from '../../league-scoring/weekly-scores/week-3-players.json';
+import weekFourData from '../../league-scoring/weekly-scores/week-4-valspar.json';
 import { TEST_USER_DIRECTORY } from '@/lib/test-users';
 
 export type StandingsEntry = {
@@ -101,7 +102,7 @@ export const SCORING_MATRIX: ScoringMatrixRow[] = [
 ];
 
 export const SEASON_SCHEDULE = scheduleData as ScheduleEvent[];
-export const COMPLETED_WEEKLY_SCORES = [weekOneData, weekTwoData, weekThreeData]
+export const COMPLETED_WEEKLY_SCORES = [weekOneData, weekTwoData, weekThreeData, weekFourData]
   .map((week) => week as WeeklyScoreFile)
   .sort((left, right) => left.eventId - right.eventId);
 
