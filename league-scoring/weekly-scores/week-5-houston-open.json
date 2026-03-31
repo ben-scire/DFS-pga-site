@@ -1,0 +1,116 @@
+{
+  "eventId": 5,
+  "eventName": "Houston Open",
+  "entries": [
+    {
+      "entryId": "jpetruney",
+      "entryName": "jpetruney",
+      "weeklyFantasyPoints": 518.0
+    },
+    {
+      "entryId": "jvaccari33",
+      "entryName": "jvaccari33",
+      "weeklyFantasyPoints": 518.0
+    },
+    {
+      "entryId": "capc",
+      "entryName": "capc",
+      "weeklyFantasyPoints": 488.0
+    },
+    {
+      "entryId": "tomlinsonj15",
+      "entryName": "tomlinsonj15",
+      "weeklyFantasyPoints": 478.0
+    },
+    {
+      "entryId": "samthemaam5",
+      "entryName": "samthemaam5",
+      "weeklyFantasyPoints": 464.5
+    },
+    {
+      "entryId": "cm30",
+      "entryName": "cm30",
+      "weeklyFantasyPoints": 461.0
+    },
+    {
+      "entryId": "yimmerdoe",
+      "entryName": "yimmerdoe",
+      "weeklyFantasyPoints": 451.0
+    },
+    {
+      "entryId": "wyaggy3",
+      "entryName": "wyaggy3",
+      "weeklyFantasyPoints": 445.0
+    },
+    {
+      "entryId": "abboduece22",
+      "entryName": "abboduece22",
+      "weeklyFantasyPoints": 401.0
+    },
+    {
+      "entryId": "jakdot2009",
+      "entryName": "jakdot2009",
+      "weeklyFantasyPoints": 393.5
+    },
+    {
+      "entryId": "sam.scire",
+      "entryName": "sam.scire",
+      "weeklyFantasyPoints": 393.0
+    },
+    {
+      "entryId": "rohansharma99",
+      "entryName": "rohansharma99",
+      "weeklyFantasyPoints": 391.0
+    },
+    {
+      "entryId": "johncastronovo",
+      "entryName": "johncastronovo",
+      "weeklyFantasyPoints": 385.5
+    },
+    {
+      "entryId": "alxmacdnld",
+      "entryName": "alxmacdnld",
+      "weeklyFantasyPoints": 360.5
+    },
+    {
+      "entryId": "mtibaudo",
+      "entryName": "mtibaudo",
+      "weeklyFantasyPoints": 346.0
+    },
+    {
+      "entryId": "bscire",
+      "entryName": "bscire",
+      "weeklyFantasyPoints": 326.0
+    },
+    {
+      "entryId": "boxmuncher",
+      "entryName": "boxmuncher",
+      "weeklyFantasyPoints": 302.5
+    },
+    {
+      "entryId": "dylangoody",
+      "entryName": "dylangoody",
+      "weeklyFantasyPoints": 302.5
+    },
+    {
+      "entryId": "eions",
+      "entryName": "eions",
+      "weeklyFantasyPoints": 240.5
+    },
+    {
+      "entryId": "finsmaniac",
+      "entryName": "finsmaniac",
+      "weeklyFantasyPoints": 390.5
+    },
+    {
+      "entryId": "unccle-neal",
+      "entryName": "unccle neal",
+      "weeklyFantasyPoints": 357.7
+    },
+    {
+      "entryId": "jake",
+      "entryName": "Jake",
+      "weeklyFantasyPoints": 286.0
+    }
+  ]
+}
