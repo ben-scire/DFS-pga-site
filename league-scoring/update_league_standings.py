@@ -431,28 +431,41 @@ def compute_standings(
         for idx, row in enumerate(ranked):
             tie_groups[row["rank"]].append(idx)
 
-        for row in ranked:
-            entry_id = row["entryId"]
-            record = by_entry[entry_id]
-            record["entryId"] = entry_id
-            record["entryName"] = row["entryName"]
-            record["weeksEntered"] += 1
-            record["weeklyFantasyPointsTotal"] += row["weeklyFantasyPoints"]
-            record["fees"] += fee_per_user
-
-            rank = row["rank"]
-            group_indices = tie_groups[rank]
-            group_size = len(group_indices)
+        tie_avg_points_by_rank: Dict[int, float] = {}
+        idx = 0
+        while idx < len(ranked):
+            tie_rank = ranked[idx]["rank"]
+            tie_score = ranked[idx]["weeklyFantasyPoints"]
+            j = idx + 1
+            while j < len(ranked) and ranked[j]["weeklyFantasyPoints"] == tie_score:
+                j += 1
+            tied_count = j - idx
+            occupied_positions = range(tie_rank, tie_rank + tied_count)
+            occupied_points = []
             points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
-            points_sum = sum(points_table[idx] if idx < len(points_table) else 0 for idx in group_indices)
-            payout_sum = sum(payouts[idx] if idx < len(payouts) else 0 for idx in group_indices)
+            for pos in occupied_positions:
+                occupied_points.append(points_table[pos - 1] if 1 <= pos <= len(points_table) else 0)
+            tie_avg_points_by_rank[tie_rank] = sum(occupied_points) / tied_count if tied_count else 0
+            idx = j
 
-            record["championshipPoints"] += points_sum / group_size
-            record["weeklyPayouts"] += payout_sum / group_size
+        for i, row in enumerate(ranked):
+            entry_id = row["entryId"]
+            rec = by_entry[entry_id]
+            rec["entryId"] = entry_id
+            rec["entryName"] = row["entryName"]
+            rec["weeksEntered"] += 1
+            rec["weeklyFantasyPointsTotal"] += row["weeklyFantasyPoints"]
+            rec["fees"] += fee_per_user
 
-            if rank == 1:
-                record["weeklyWins"] += 1
+            rnk = row["rank"]
+            base = tie_avg_points_by_rank.get(rnk, 0)
+            rec["championshipPoints"] += base
+            if rnk == 1:
+                rec["weeklyWins"] += 1
+            if i < payout_places:
+                rec["weeklyPayouts"] += distributable * split[i]
 
+    # Quarterly payouts only once quarter finale week exists in weekly files.
     events_by_quarter: Dict[int, List[int]] = defaultdict(list)
     quarter_finale_by_quarter: Dict[int, int] = {}
     for event in schedule:
@@ -505,15 +518,15 @@ def compute_standings(
         rows.append(
             {
                 "rank": 0,
-                "entryId": record["entryId"],
-                "entryName": record["entryName"],
-                "championshipPoints": points if points % 1 else int(points),
-                "netDollars": round(record["weeklyPayouts"] - record["fees"], 2),
-                "weeklyFantasyPointsTotal": round(record["weeklyFantasyPointsTotal"], 1),
-                "totalPointsScored": round(record["weeklyFantasyPointsTotal"], 1),
-                "weeklyWins": int(record["weeklyWins"]),
-                "previousWeekFinish": previous_week_finish_by_entry.get(record["entryId"]),
-                "weeksEntered": int(record["weeksEntered"]),
+                "entryId": rec["entryId"],
+                "entryName": rec["entryName"],
+                "championshipPoints": round(rec["championshipPoints"], 2),
+                "netDollars": round(rec["weeklyPayouts"] - rec["fees"], 2),
+                "weeklyFantasyPointsTotal": round(rec["weeklyFantasyPointsTotal"], 1),
+                "totalPointsScored": round(rec["weeklyFantasyPointsTotal"], 1),
+                "weeklyWins": int(rec["weeklyWins"]),
+                "previousWeekFinish": previous_week_finish_by_entry.get(rec["entryId"]),
+                "weeksEntered": int(rec["weeksEntered"]),
             }
         )
 
