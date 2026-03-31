@@ -29,7 +29,15 @@ type NormalizedLiveRow = {
   status?: string;
   upstreamFantasyPoints?: number;
   scorecardFantasyPoints?: number;
+  activeRoundNumber?: number;
+  activeRoundHoles?: number;
   rawRow: GenericRow;
+};
+
+type ExistingTestScore = {
+  fantasyPoints?: number | null;
+  manualFantasyPoints?: number | null;
+  finalScoreLocked?: boolean;
 };
 
 const DEFAULT_INTERVAL_MS = 30_000;
@@ -46,6 +54,12 @@ async function main() {
   }
   if (!playerPool.length) {
     throw new Error(`No seeded player pool found for contest "${options.contestId}".`);
+  }
+  if (!isContestLiveSyncEnabled(contest.status)) {
+    console.log(
+      `Contest ${options.contestId} is marked "${contest.status}". Skipping Data Golf sync because the tournament is not live.`
+    );
+    return;
   }
 
   const liveUrl = buildLiveUrl(options.urlOverride);
@@ -122,9 +136,13 @@ async function syncOnce(input: {
   const primaryRows = parseUpstreamRows(rawBody, response.headers.get('content-type'));
   const rows = await mergeTournamentStatsRows(input.liveUrl, primaryRows);
   const normalizedRows = rows.map(normalizeLiveRow).filter((row): row is NormalizedLiveRow => Boolean(row));
-  const scoredRows = applyLivePositionPoints(normalizedRows);
+  const annotatedRows = annotateRoundStates(normalizedRows);
+  const scoredRows = applyLivePositionPoints(annotatedRows);
 
   const db = input.dryRun ? null : getFirestore();
+  const existingScoresByGolferId = db
+    ? await loadExistingTestScoresByGolferId(db, input.contestId)
+    : new Map<string, ExistingTestScore>();
   let matched = 0;
   let wrote = 0;
   let unmatched = 0;
@@ -149,6 +167,17 @@ async function syncOnce(input: {
 
     matched += 1;
     const fantasy = resolveFantasyPoints(row, input.scoringMode);
+    const existingScore = existingScoresByGolferId.get(golfer.golferId);
+    const scoreIsLocked = existingScore?.finalScoreLocked === true;
+    const manualLockedFantasy = typeof existingScore?.manualFantasyPoints === 'number' ? existingScore.manualFantasyPoints : undefined;
+    const lockedFantasyFallback =
+      existingScore?.fantasyPoints === null || typeof existingScore?.fantasyPoints === 'number'
+        ? existingScore.fantasyPoints
+        : undefined;
+    const fantasyToWrite = scoreIsLocked
+      ? manualLockedFantasy ?? lockedFantasyFallback
+      : fantasy.value;
+    const scoringSourceToWrite = scoreIsLocked ? 'manual-lock' : fantasy.source;
     if (fantasy.source === 'dfs-rules') scoredByRules += 1;
     if (fantasy.source === 'upstream') scoredByUpstream += 1;
     if (fantasy.source === 'none') withoutFantasyPoints += 1;
@@ -171,8 +200,8 @@ async function syncOnce(input: {
           ...(row.thru !== undefined ? { thru: row.thru } : {}),
           ...(row.today !== undefined ? { today: row.today } : {}),
           ...(row.status !== undefined ? { status: row.status } : {}),
-          ...(typeof fantasy.value === 'number' ? { fantasyPoints: fantasy.value } : { fantasyPoints: null }),
-          scoringSource: fantasy.source,
+          ...(typeof fantasyToWrite === 'number' ? { fantasyPoints: fantasyToWrite } : { fantasyPoints: null }),
+          scoringSource: scoringSourceToWrite,
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
@@ -193,13 +222,33 @@ async function syncOnce(input: {
   };
 }
 
+async function loadExistingTestScoresByGolferId(
+  db: ReturnType<typeof getFirestore>,
+  contestId: string
+): Promise<Map<string, ExistingTestScore>> {
+  const snapshot = await db.collection('test_scores').doc(contestId).collection('golfers').get();
+  const result = new Map<string, ExistingTestScore>();
+  snapshot.forEach((docSnapshot) => {
+    const data = docSnapshot.data();
+    result.set(docSnapshot.id, {
+      fantasyPoints: typeof data.fantasyPoints === 'number' || data.fantasyPoints === null ? data.fantasyPoints : undefined,
+      manualFantasyPoints:
+        typeof data.manualFantasyPoints === 'number' || data.manualFantasyPoints === null
+          ? data.manualFantasyPoints
+          : undefined,
+      finalScoreLocked: data.finalScoreLocked === true,
+    });
+  });
+  return result;
+}
+
 function loadEnvFiles() {
   loadDotenv({ path: path.resolve(process.cwd(), '.env.local') });
   loadDotenv({ path: path.resolve(process.cwd(), '.env') });
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  let contestId = 'week-2-arnold-palmer';
+  let contestId = (process.env.DATAGOLF_CONTEST_ID || '').trim() || 'week-4-valspar';
   let once = false;
   let dryRun = false;
   let intervalMs = parsePositiveInt(process.env.DATAGOLF_POLL_INTERVAL_MS, DEFAULT_INTERVAL_MS);
@@ -246,14 +295,19 @@ function parseArgs(argv: string[]): CliOptions {
   return { contestId, once, dryRun, intervalMs, scoringMode, urlOverride };
 }
 
+function isContestLiveSyncEnabled(status: string): boolean {
+  return status === 'live';
+}
+
 function printHelp() {
   console.log(`Poll a Data Golf live endpoint and write Firestore test_scores docs.
 
 Usage:
-  tsx scripts/sync-datagolf-live-scores.ts [--contest-id week-2-arnold-palmer] [--once] [--dry-run] [--scoring-mode dfs-rules]
+  tsx scripts/sync-datagolf-live-scores.ts [--contest-id week-4-valspar] [--once] [--dry-run] [--scoring-mode dfs-rules]
   tsx scripts/sync-datagolf-live-scores.ts --url "https://..." --once --dry-run
 
 Env (required unless --url is provided):
+  DATAGOLF_CONTEST_ID      Contest id to write into Firestore (default: week-4-valspar)
   DATAGOLF_LIVE_URL        Full upstream URL. Supports {key} placeholder.
   DATAGOLF_API_KEY         Optional; substituted into DATAGOLF_LIVE_URL when {key} is present.
   DATAGOLF_POLL_INTERVAL_MS  Poll interval (default 30000)
@@ -291,10 +345,27 @@ function buildTournamentStatsUrl(liveUrl: string): string | null {
     return resolveDataGolfUrl(override);
   }
 
-  if (liveUrl.includes('live-hole-scores')) {
-    return liveUrl.replace('live-hole-scores', 'live-tournament-stats');
+  try {
+    const live = new URL(liveUrl);
+    const stats = new URL('https://feeds.datagolf.com/preds/live-tournament-stats');
+    const tour = live.searchParams.get('tour');
+    if (tour) {
+      stats.searchParams.set('tour', tour);
+    }
+    stats.searchParams.set('round', 'event_cumulative');
+    stats.searchParams.set('display', 'value');
+    stats.searchParams.set('file_format', live.searchParams.get('file_format') || 'json');
+
+    if (live.searchParams.has('key')) {
+      stats.searchParams.set('key', live.searchParams.get('key') || '');
+    } else {
+      stats.searchParams.set('key', '{key}');
+    }
+
+    return resolveDataGolfUrl(stats.toString());
+  } catch {
+    return null;
   }
-  return null;
 }
 
 function initFirebaseAdmin() {
@@ -374,20 +445,17 @@ function resolveGolferFromLiveName(
   if (!parsed) return null;
   const candidates = golfersByLastName.get(parsed.last) ?? [];
   if (!candidates.length) return null;
-  if (candidates.length === 1) return candidates[0];
-
-  const liveFirst = parsed.first;
-  const prefixMatched = candidates.find((candidate) => {
+  const matchedCandidates = candidates.filter((candidate) => {
     const firstCandidate = parseFirstLastName(candidate.canonicalName)?.first;
     if (!firstCandidate) return false;
-    const liveCompact = compactNamePart(liveFirst);
-    const candidateCompact = compactNamePart(firstCandidate);
-    if (candidateCompact.startsWith(liveCompact) || liveCompact.startsWith(candidateCompact)) {
-      return true;
-    }
-    return initials(liveFirst) === initials(firstCandidate);
+    return firstNamesAppearCompatible(parsed.first, firstCandidate);
   });
-  return prefixMatched ?? null;
+
+  if (matchedCandidates.length === 1) {
+    return matchedCandidates[0];
+  }
+
+  return null;
 }
 
 function buildNameKeys(input: string): string[] {
@@ -436,6 +504,27 @@ function parseFirstLastName(input: string): { first: string; last: string } | nu
 
 function compactNamePart(value: string): string {
   return normalizeNameForMatching(value).replace(/\s+/g, '');
+}
+
+function firstNamesAppearCompatible(liveFirst: string, candidateFirst: string): boolean {
+  const liveCompact = compactNamePart(liveFirst);
+  const candidateCompact = compactNamePart(candidateFirst);
+  if (!liveCompact || !candidateCompact) return false;
+  if (liveCompact === candidateCompact) return true;
+
+  const liveIsInitialish = isInitialishName(liveFirst);
+  const candidateIsInitialish = isInitialishName(candidateFirst);
+  if (liveIsInitialish || candidateIsInitialish) {
+    return initials(liveFirst) === initials(candidateFirst);
+  }
+
+  return candidateCompact.startsWith(liveCompact) || liveCompact.startsWith(candidateCompact);
+}
+
+function isInitialishName(value: string): boolean {
+  const parts = normalizeNameForMatching(value).split(' ').filter(Boolean);
+  if (!parts.length) return false;
+  return parts.every((part) => part.length === 1);
 }
 
 function initials(value: string): string {
@@ -604,8 +693,58 @@ function normalizeLiveRow(row: GenericRow): NormalizedLiveRow | null {
       'points',
     ]),
     scorecardFantasyPoints: scorecardDerived?.fantasyPoints,
+    activeRoundNumber: scorecardDerived?.activeRoundNumber,
+    activeRoundHoles: scorecardDerived?.activeRoundHoles,
     rawRow: row,
   };
+}
+
+function annotateRoundStates(rows: NormalizedLiveRow[]): NormalizedLiveRow[] {
+  const fieldCurrentRound = rows.reduce((maxRound, row) => {
+    return Math.max(maxRound, row.activeRoundNumber ?? 0);
+  }, 0);
+
+  if (fieldCurrentRound <= 0) {
+    return rows;
+  }
+
+  return rows.map((row) => {
+    const activeRoundNumber = row.activeRoundNumber;
+    const activeRoundHoles = row.activeRoundHoles;
+    if (!activeRoundNumber || activeRoundHoles === undefined) {
+      return row;
+    }
+
+    const status = (row.status ?? '').toLowerCase();
+    const position = (row.position ?? '').toLowerCase();
+    const isTerminal =
+      status.includes('final') ||
+      status.includes('finished') ||
+      status.includes('cut') ||
+      status.includes('wd') ||
+      status.includes('dq') ||
+      position === 'cut' ||
+      position === 'wd' ||
+      position === 'dq';
+
+    if (isTerminal || activeRoundHoles < 18) {
+      return row;
+    }
+
+    if (activeRoundNumber < fieldCurrentRound) {
+      return {
+        ...row,
+        thru: `R${activeRoundNumber} F`,
+        status: `awaiting-round-${fieldCurrentRound}`,
+      };
+    }
+
+    return {
+      ...row,
+      thru: `R${activeRoundNumber} F`,
+      status: fieldCurrentRound >= 4 ? 'final' : `round-${activeRoundNumber}-complete`,
+    };
+  });
 }
 
 function resolveFantasyPoints(
@@ -645,6 +784,23 @@ function resolveFantasyPoints(
   return { source: 'none' };
 }
 
+function applyHardcodedFantasyAdjustment(input: {
+  contestId: string;
+  golferId: string;
+  fantasyPoints?: number;
+}): number | undefined {
+  if (typeof input.fantasyPoints !== 'number') {
+    return input.fantasyPoints;
+  }
+
+  // Temporary league-specific correction requested for week 3 Hideki discrepancy.
+  if (input.contestId === 'week-3-players' && input.golferId === 'w3-hideki-matsuyama') {
+    return roundToHalf(input.fantasyPoints - 3);
+  }
+
+  return input.fantasyPoints;
+}
+
 function computeFantasyPointsFromDfsRules(sourceRow: GenericRow): number | undefined {
   const scorecardDerived = deriveFromHoleScorecards(sourceRow);
   if (scorecardDerived) {
@@ -675,7 +831,6 @@ function computeFantasyPointsFromDfsRules(sourceRow: GenericRow): number | undef
     'streak_3_birdies',
     'three_birdie_streaks',
     'streaks_of_3_birdies',
-    'birdie_streaks',
   ]);
   const threeBirdieStreaks = Math.min(4, threeBirdieStreaksRaw);
   const bogeyFreeRounds = Math.min(4, readCount(sourceRow, ['bogey_free_rounds', 'bogey_free_round']));
@@ -766,12 +921,48 @@ interface RoundScoreCell {
   scores?: unknown;
 }
 
+function orderRoundScoresByPlaySequence(scoresRaw: HoleScoreCell[]): HoleScoreCell[] {
+  if (scoresRaw.length <= 1) return [...scoresRaw];
+
+  const parsed = scoresRaw.map((cell, index) => ({
+    cell,
+    index,
+    hole: toSafeInt(cell.hole),
+  }));
+
+  const validHoles = parsed.filter(({ hole }) => hole !== null && hole >= 1 && hole <= 18);
+  const hasOnlyValidHoleNumbers = validHoles.length === parsed.length;
+  const holesAreUnique = new Set(validHoles.map(({ hole }) => hole)).size === validHoles.length;
+
+  // If hole metadata is incomplete/duplicated, trust upstream order as-is.
+  if (!hasOnlyValidHoleNumbers || !holesAreUnique || !validHoles.length) {
+    return [...scoresRaw];
+  }
+
+  const startHole = validHoles[0].hole as number;
+
+  // Sort by circular distance from the first observed hole so rounds that start on
+  // hole 10 preserve real play sequence (10..18,1..9) for streak detection.
+  return [...validHoles]
+    .sort((left, right) => {
+      const leftDistance = (left.hole! - startHole + 18) % 18;
+      const rightDistance = (right.hole! - startHole + 18) % 18;
+      if (leftDistance === rightDistance) {
+        return left.index - right.index;
+      }
+      return leftDistance - rightDistance;
+    })
+    .map(({ cell }) => cell);
+}
+
 interface ScorecardDerived {
   fantasyPoints: number;
   scoreToPar: number;
   today: number;
   thru: string | number;
   status: string;
+  activeRoundNumber: number;
+  activeRoundHoles: number;
 }
 
 function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
@@ -801,11 +992,7 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
     const round = roundsRaw[roundIndex] as RoundScoreCell;
     const roundNumber = toSafeInt(round.round_num) ?? roundIndex + 1;
     const scoresRaw = Array.isArray(round.scores) ? (round.scores as HoleScoreCell[]) : [];
-    const ordered = [...scoresRaw].sort((left, right) => {
-      const leftHole = toSafeInt(left.hole) ?? 0;
-      const rightHole = toSafeInt(right.hole) ?? 0;
-      return leftHole - rightHole;
-    });
+    const ordered = orderRoundScoresByPlaySequence(scoresRaw);
 
     let roundToPar = 0;
     let roundStrokes = 0;
@@ -838,7 +1025,8 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
         holeInOnes += 1;
       }
 
-      if (delta <= -1) {
+      // DraftKings streak bonus is for consecutive birdies (not birdie-or-better).
+      if (delta === -1) {
         currentBirdieRun += 1;
         if (currentBirdieRun >= 3) {
           hasThreeBirdieStreak = true;
@@ -900,6 +1088,8 @@ function deriveFromHoleScorecards(row: GenericRow): ScorecardDerived | null {
     today: activeRoundToPar,
     thru,
     status,
+    activeRoundNumber,
+    activeRoundHoles,
   };
 }
 

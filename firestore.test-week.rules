@@ -8,6 +8,8 @@ service cloud.firestore {
         'abboduece22',
         'mtibaudo',
         'johncastronovo',
+        'amac',
+        'yimmerdoe',
         'cm30',
         'rohansharma99',
         'jvaccari33',
@@ -28,7 +30,7 @@ service cloud.firestore {
     }
 
     function isAllowedContest(contestId) {
-      return contestId in ['week-1-cognizant', 'week-2-arnold-palmer'];
+      return contestId in ['week-1-cognizant', 'week-2-arnold-palmer', 'week-3-players', 'week-4-valspar'];
     }
 
     function isAdminUserSlug(userSlug) {
@@ -45,7 +47,10 @@ service cloud.firestore {
           'lastEditedAtIso',
           'updatedAt',
           'source',
-          'version'
+          'version',
+          'officialWeeklyFantasyPoints',
+          'officialPointsSource',
+          'officialPointsImportedAtIso'
         ]) &&
         data.contestId == contestId &&
         data.userSlug == userSlug &&
@@ -54,8 +59,45 @@ service cloud.firestore {
         data.lineupGolferIds.size() <= 6 &&
         data.lastEditedAtIso is string &&
         (!('submittedAtIso' in data) || data.submittedAtIso is string) &&
+        (!('officialWeeklyFantasyPoints' in data) || data.officialWeeklyFantasyPoints is int || data.officialWeeklyFantasyPoints is float) &&
+        (!('officialPointsSource' in data) || data.officialPointsSource == 'dk-standings-csv') &&
+        (!('officialPointsImportedAtIso' in data) || data.officialPointsImportedAtIso is string) &&
         data.source == 'web-test' &&
         data.version == 1;
+    }
+
+
+    function isValidTestScorePayload(data, contestId, golferId) {
+      return data.keys().hasOnly([
+          'contestId',
+          'golferId',
+          'position',
+          'scoreToPar',
+          'thru',
+          'today',
+          'status',
+          'fantasyPoints',
+          'scoringSource',
+          'updatedAt',
+          'updatedBySlug',
+          'finalScoreLocked',
+          'manualFantasyPoints',
+          'manualScoreNote'
+        ]) &&
+        data.contestId == contestId &&
+        data.golferId == golferId &&
+        (!('position' in data) || data.position is string) &&
+        (!('scoreToPar' in data) || data.scoreToPar is int || data.scoreToPar is float || data.scoreToPar is string) &&
+        (!('thru' in data) || data.thru is int || data.thru is string) &&
+        (!('today' in data) || data.today is int || data.today is float || data.today is string) &&
+        (!('status' in data) || data.status is string) &&
+        (!('fantasyPoints' in data) || data.fantasyPoints is int || data.fantasyPoints is float || data.fantasyPoints == null) &&
+        (!('scoringSource' in data) || data.scoringSource is string) &&
+        data.updatedBySlug is string &&
+        isAdminUserSlug(data.updatedBySlug) &&
+        (!('finalScoreLocked' in data) || data.finalScoreLocked is bool) &&
+        (!('manualFantasyPoints' in data) || data.manualFantasyPoints is int || data.manualFantasyPoints is float || data.manualFantasyPoints == null) &&
+        (!('manualScoreNote' in data) || data.manualScoreNote is string);
     }
 
     function isValidPaymentStatusPayload(data, userSlug) {
@@ -64,6 +106,8 @@ service cloud.firestore {
           'userDisplayName',
           'week1Paid',
           'week2Paid',
+          'week3Paid',
+          'week4Paid',
           'quarter1Paid',
           'paid',
           'updatedByUid',
@@ -75,6 +119,8 @@ service cloud.firestore {
         data.userDisplayName is string &&
         (!('week1Paid' in data) || data.week1Paid is bool) &&
         (!('week2Paid' in data) || data.week2Paid is bool) &&
+        (!('week3Paid' in data) || data.week3Paid is bool) &&
+        (!('week4Paid' in data) || data.week4Paid is bool) &&
         (!('quarter1Paid' in data) || data.quarter1Paid is bool) &&
         (!('paid' in data) || data.paid is bool) &&
         (!('updatedByUid' in data) || data.updatedByUid is string) &&
@@ -97,7 +143,9 @@ service cloud.firestore {
 
     match /test_scores/{contestId}/golfers/{golferId} {
       allow read: if isAllowedContest(contestId);
-      allow write: if false;
+      allow create, update: if isAllowedContest(contestId) &&
+        isValidTestScorePayload(request.resource.data, contestId, golferId);
+      allow delete: if false;
     }
 
     match /test_payment_status/{userSlug} {

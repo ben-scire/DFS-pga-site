@@ -18,7 +18,7 @@ import {
 } from '@/lib/firestore-lineups';
 import { getLineupValidation } from '@/lib/lineup-builder';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
-import { getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
+import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import {
   loadImportedPlayerPool,
   loadPersistedLineup,
@@ -36,11 +36,17 @@ function formatCountdown(lockAtIso: string): string {
   return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
 }
 
+function shouldUseLiveLineup(contestLockAtIso: string, contestStatus: string): boolean {
+  if (contestStatus === 'live' || contestStatus === 'final') return true;
+  return Date.now() >= new Date(contestLockAtIso).getTime();
+}
+
 function LineupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const contestId = searchParams.get('contestId') ?? 'week-2-arnold-palmer';
+  const contestId = searchParams.get('contestId') ?? getDefaultContestId();
   const contest = getWeeklyContestById(contestId);
+  const useLiveLineup = contest ? shouldUseLiveLineup(contest.lockAtIso, contest.status) : false;
 
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -67,7 +73,13 @@ function LineupContent() {
   }, [router]);
 
   useEffect(() => {
+    if (!contest || !session || !useLiveLineup) return;
+    router.replace(`/live-lineup?contestId=${encodeURIComponent(contest.id)}&userId=${encodeURIComponent(session.userSlug)}`);
+  }, [contest, router, session, useLiveLineup]);
+
+  useEffect(() => {
     if (!contest || !session) return;
+    if (useLiveLineup) return;
 
     const imported = loadImportedPlayerPool(contest.id);
     setPlayerPool(imported && imported.length ? imported : getDefaultPlayerPool(contest.id));
@@ -111,7 +123,7 @@ function LineupContent() {
       cancelled = true;
       unsubscribe();
     };
-  }, [contest, session]);
+  }, [contest, session, useLiveLineup]);
 
   useEffect(() => {
     if (!contest) return;
@@ -215,6 +227,10 @@ function LineupContent() {
 
   if (!session) {
     return null;
+  }
+
+  if (contest && useLiveLineup) {
+    return <div className="min-h-screen bg-[#111318]" />;
   }
 
   if (!contest || !validation) {

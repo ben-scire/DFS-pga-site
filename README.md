@@ -164,6 +164,11 @@ Notes:
   - Output points are rounded to `.0` / `.5`.
 - Writes to `test_scores/{contestId}/golfers/{golferId}` with `updatedAt` server timestamps.
 - `fantasyPoints` source is locked to strict `dfs-rules` computation.
+- Manual admin override is supported and survives sync when you lock a golfer doc:
+  - Set `finalScoreLocked: true`
+  - Set `manualFantasyPoints: 75.5` (or your desired value)
+  - Keep `updatedBySlug` as an admin slug (for example: `bscire`)
+  - When locked, the sync job preserves the locked score and marks `scoringSource` as `manual-lock`.
 
 ### 3. Production sync for deployed site (Cloud Run Job + Scheduler)
 

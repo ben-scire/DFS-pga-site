@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 if ! command -v gcloud >/dev/null 2>&1; then
   echo "gcloud is required but not found. Install Google Cloud SDK first."
   exit 1
@@ -21,6 +24,7 @@ SCHEDULER_REGION="${SCHEDULER_REGION:-$REGION}"
 TIME_ZONE="${TIME_ZONE:-America/New_York}"
 TOUR="${TOUR:-pga}"
 SCORING_MODE="${SCORING_MODE:-dfs-rules}"
+DATAGOLF_CONTEST_ID="${DATAGOLF_CONTEST_ID:-week-4-valspar}"
 AR_REPO="${AR_REPO:-sync-jobs}"
 IMAGE_NAME="${IMAGE_NAME:-datagolf-live-sync}"
 JOB_NAME="${JOB_NAME:-datagolf-live-sync}"
@@ -63,7 +67,7 @@ SCHEDULER_SA_EMAIL="${SCHEDULER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:latest"
 JOB_RUN_URI="https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/jobs/${JOB_NAME}:run"
 
-ENV_VARS="^@^DATAGOLF_LIVE_URL=${DATAGOLF_LIVE_URL}@DATAGOLF_SCORING_MODE=${SCORING_MODE}"
+ENV_VARS="^@^DATAGOLF_CONTEST_ID=${DATAGOLF_CONTEST_ID}@DATAGOLF_LIVE_URL=${DATAGOLF_LIVE_URL}@DATAGOLF_SCORING_MODE=${SCORING_MODE}"
 if [[ -n "${DATAGOLF_TOURNAMENT_STATS_URL}" ]]; then
   ENV_VARS="${ENV_VARS}@DATAGOLF_TOURNAMENT_STATS_URL=${DATAGOLF_TOURNAMENT_STATS_URL}"
 fi
@@ -140,7 +144,7 @@ EOF
 gcloud builds submit \
   --project "${PROJECT_ID}" \
   --config "${TMP_CLOUDBUILD}" \
-  .
+  "${REPO_DIR}"
 
 echo "Deploying Cloud Run Job..."
 gcloud run jobs deploy "${JOB_NAME}" \
@@ -148,6 +152,8 @@ gcloud run jobs deploy "${JOB_NAME}" \
   --region "${REGION}" \
   --image "${IMAGE_URI}" \
   --service-account "${RUNTIME_SA_EMAIL}" \
+  --command npm \
+  --args run,sync:datagolf:scores,--,--once,--contest-id,${DATAGOLF_CONTEST_ID} \
   --set-env-vars "${ENV_VARS}" \
   --set-secrets "DATAGOLF_API_KEY=${DATAGOLF_SECRET_NAME}:latest" \
   --task-timeout 900s \

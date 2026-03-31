@@ -1,0 +1,27 @@
+{
+  "eventId": 3,
+  "eventName": "THE PLAYERS Championship",
+  "entries": [
+    { "entryId": "amac", "entryName": "amac", "weeklyFantasyPoints": 494.5 },
+    { "entryId": "jpetruney", "entryName": "jpetruney", "weeklyFantasyPoints": 476.0 },
+    { "entryId": "johncastronovo", "entryName": "johncastronovo", "weeklyFantasyPoints": 467.0 },
+    { "entryId": "bscire", "entryName": "bscire", "weeklyFantasyPoints": 450.5 },
+    { "entryId": "finsmaniac", "entryName": "finsmaniac", "weeklyFantasyPoints": 439.5 },
+    { "entryId": "abboduece22", "entryName": "abboduece22", "weeklyFantasyPoints": 420.5 },
+    { "entryId": "dylangoody", "entryName": "dylangoody", "weeklyFantasyPoints": 397.0 },
+    { "entryId": "samthemaam5", "entryName": "samthemaam5", "weeklyFantasyPoints": 393.5 },
+    { "entryId": "jake", "entryName": "Jake", "weeklyFantasyPoints": 377.5 },
+    { "entryId": "tomlinsonj15", "entryName": "tomlinsonj15", "weeklyFantasyPoints": 374.5 },
+    { "entryId": "wyaggy3", "entryName": "wyaggy3", "weeklyFantasyPoints": 369.0 },
+    { "entryId": "capc", "entryName": "capc", "weeklyFantasyPoints": 364.5 },
+    { "entryId": "cm30", "entryName": "cm30", "weeklyFantasyPoints": 360.0 },
+    { "entryId": "jvaccari33", "entryName": "jvaccari33", "weeklyFantasyPoints": 357.5 },
+    { "entryId": "unccle-neal", "entryName": "unccle neal", "weeklyFantasyPoints": 350.0 },
+    { "entryId": "rohansharma99", "entryName": "rohansharma99", "weeklyFantasyPoints": 337.0 },
+    { "entryId": "sam.scire", "entryName": "sam.scire", "weeklyFantasyPoints": 336.5 },
+    { "entryId": "jakdot2009", "entryName": "jakdot2009", "weeklyFantasyPoints": 336.0 },
+    { "entryId": "yimmerdoe", "entryName": "yimmerdoe", "weeklyFantasyPoints": 336.0 },
+    { "entryId": "eions", "entryName": "eions", "weeklyFantasyPoints": 334.5 },
+    { "entryId": "boxmuncher", "entryName": "boxmuncher", "weeklyFantasyPoints": 270.5 }
+  ]
+}

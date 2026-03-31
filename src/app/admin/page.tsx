@@ -15,6 +15,14 @@ import {
 import { TEST_USERS } from '@/lib/test-users';
 import { toast } from '@/hooks/use-toast';
 
+const PAYMENT_FIELDS: Array<{ field: PaymentStatusField; shortLabel: string; label: string }> = [
+  { field: 'week1Paid', shortLabel: 'W1', label: 'W1 ($10)' },
+  { field: 'week2Paid', shortLabel: 'W2', label: 'W2 ($10)' },
+  { field: 'week3Paid', shortLabel: 'W3', label: 'W3 ($10)' },
+  { field: 'week4Paid', shortLabel: 'W4', label: 'W4 ($10)' },
+  { field: 'quarter1Paid', shortLabel: 'Q1', label: 'Q1 ($50)' },
+];
+
 export default function AdminPaymentsPage() {
   const router = useRouter();
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -56,6 +64,8 @@ export default function AdminPaymentsPage() {
       status: paymentStatusBySlug[user.id] ?? {
         week1Paid: false,
         week2Paid: false,
+        week3Paid: false,
+        week4Paid: false,
         quarter1Paid: false,
       },
     }));
@@ -103,43 +113,24 @@ export default function AdminPaymentsPage() {
                     <p className="font-medium">{user.name}</p>
                     <p className="text-xs text-zinc-500">{user.id}</p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <label className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
-                      <span>W1</span>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-emerald-400"
-                        checked={status.week1Paid}
-                        disabled={savingKey === `${user.id}:week1Paid`}
-                        onChange={(event) => {
-                          void toggleField(user.id, 'week1Paid', event.target.checked);
-                        }}
-                      />
-                    </label>
-                    <label className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
-                      <span>W2</span>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-emerald-400"
-                        checked={status.week2Paid}
-                        disabled={savingKey === `${user.id}:week2Paid`}
-                        onChange={(event) => {
-                          void toggleField(user.id, 'week2Paid', event.target.checked);
-                        }}
-                      />
-                    </label>
-                    <label className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
-                      <span>Q1</span>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-emerald-400"
-                        checked={status.quarter1Paid}
-                        disabled={savingKey === `${user.id}:quarter1Paid`}
-                        onChange={(event) => {
-                          void toggleField(user.id, 'quarter1Paid', event.target.checked);
-                        }}
-                      />
-                    </label>
+                  <div className="grid grid-cols-5 gap-2 text-xs">
+                    {PAYMENT_FIELDS.map(({ field, shortLabel }) => (
+                      <label
+                        key={field}
+                        className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5"
+                      >
+                        <span>{shortLabel}</span>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-emerald-400"
+                          checked={status[field]}
+                          disabled={savingKey === `${user.id}:${field}`}
+                          onChange={(event) => {
+                            void toggleField(user.id, field, event.target.checked);
+                          }}
+                        />
+                      </label>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -150,9 +141,9 @@ export default function AdminPaymentsPage() {
                 <thead className="bg-white/[0.04] text-zinc-300">
                   <tr>
                     <th className="px-3 py-2 text-left">User</th>
-                    <th className="px-3 py-2 text-center">W1 ($10)</th>
-                    <th className="px-3 py-2 text-center">W2 ($10)</th>
-                    <th className="px-3 py-2 text-center">Q1 ($50)</th>
+                    {PAYMENT_FIELDS.map(({ field, label }) => (
+                      <th key={field} className="px-3 py-2 text-center">{label}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -162,39 +153,19 @@ export default function AdminPaymentsPage() {
                         <div className="font-medium">{user.name}</div>
                         <div className="text-xs text-zinc-500">{user.id}</div>
                       </td>
-                      <td className="px-3 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-emerald-400"
-                          checked={status.week1Paid}
-                          disabled={savingKey === `${user.id}:week1Paid`}
-                          onChange={(event) => {
-                            void toggleField(user.id, 'week1Paid', event.target.checked);
-                          }}
-                        />
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-emerald-400"
-                          checked={status.week2Paid}
-                          disabled={savingKey === `${user.id}:week2Paid`}
-                          onChange={(event) => {
-                            void toggleField(user.id, 'week2Paid', event.target.checked);
-                          }}
-                        />
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-emerald-400"
-                          checked={status.quarter1Paid}
-                          disabled={savingKey === `${user.id}:quarter1Paid`}
-                          onChange={(event) => {
-                            void toggleField(user.id, 'quarter1Paid', event.target.checked);
-                          }}
-                        />
-                      </td>
+                      {PAYMENT_FIELDS.map(({ field }) => (
+                        <td key={field} className="px-3 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-emerald-400"
+                            checked={status[field]}
+                            disabled={savingKey === `${user.id}:${field}`}
+                            onChange={(event) => {
+                              void toggleField(user.id, field, event.target.checked);
+                            }}
+                          />
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
