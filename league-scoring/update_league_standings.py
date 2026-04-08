@@ -448,6 +448,40 @@ def compute_standings(
             tie_avg_points_by_rank[tie_rank] = sum(occupied_points) / tied_count if tied_count else 0
             idx = j
 
+        tie_avg_points_by_rank: Dict[int, float] = {}
+        idx = 0
+        while idx < len(ranked):
+            tie_rank = ranked[idx]["rank"]
+            tie_score = ranked[idx]["weeklyFantasyPoints"]
+            j = idx + 1
+            while j < len(ranked) and ranked[j]["weeklyFantasyPoints"] == tie_score:
+                j += 1
+            tied_count = j - idx
+            occupied_positions = range(tie_rank, tie_rank + tied_count)
+            occupied_points = []
+            points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
+            for pos in occupied_positions:
+                occupied_points.append(points_table[pos - 1] if 1 <= pos <= len(points_table) else 0)
+            tie_avg_points_by_rank[tie_rank] = sum(occupied_points) / tied_count if tied_count else 0
+            idx = j
+
+        tie_avg_points_by_rank: Dict[int, float] = {}
+        idx = 0
+        while idx < len(ranked):
+            tie_rank = ranked[idx]["rank"]
+            tie_score = ranked[idx]["weeklyFantasyPoints"]
+            j = idx + 1
+            while j < len(ranked) and ranked[j]["weeklyFantasyPoints"] == tie_score:
+                j += 1
+            tied_count = j - idx
+            occupied_positions = range(tie_rank, tie_rank + tied_count)
+            occupied_points = []
+            points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
+            for pos in occupied_positions:
+                occupied_points.append(points_table[pos - 1] if 1 <= pos <= len(points_table) else 0)
+            tie_avg_points_by_rank[tie_rank] = sum(occupied_points) / tied_count if tied_count else 0
+            idx = j
+
         for i, row in enumerate(ranked):
             entry_id = row["entryId"]
             rec = by_entry[entry_id]
