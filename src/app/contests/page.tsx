@@ -234,7 +234,7 @@ function ContestsContent() {
           <Card className="rounded-3xl border border-white/10 bg-[#0c1218]/95 text-zinc-100">
             <CardHeader>
               <CardTitle>Q1 Runway</CardTitle>
-              <CardDescription className="text-zinc-400">Remaining Q1 events after The Players.</CardDescription>
+              <CardDescription className="text-zinc-400">Remaining Q1 events after Valero.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {q1Remaining.map((event) => (
