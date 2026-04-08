@@ -7,6 +7,48 @@ const DEFAULT_HEADSHOT = 'https://placehold.co/80x80/png';
 
 export const WEEKLY_CONTESTS: WeeklyLeagueContest[] = [
   {
+    id: 'week-7-masters',
+    weekNumber: 7,
+    name: 'WEEK 7 MASTERS',
+    hostLabel: 'by dylangoody',
+    entryFeeDisplay: '$0',
+    lockAtIso: '2026-04-09T12:00:00.000Z',
+    status: 'open',
+    lockDisabled: false,
+    testMode: true,
+    salaryCap: 50000,
+    rosterSize: 6,
+    entryNumberLabel: '0/25',
+  },
+  {
+    id: 'week-6-valero-texas-open',
+    weekNumber: 6,
+    name: 'WEEK 6 VALERO',
+    hostLabel: 'by dylangoody',
+    entryFeeDisplay: '$0',
+    lockAtIso: '2026-04-02T12:00:00.000Z',
+    status: 'final',
+    lockDisabled: true,
+    testMode: true,
+    salaryCap: 50000,
+    rosterSize: 6,
+    entryNumberLabel: '22/25',
+  },
+  {
+    id: 'week-5-houston-open',
+    weekNumber: 5,
+    name: 'WEEK 5 HOUSTON',
+    hostLabel: 'by dylangoody',
+    entryFeeDisplay: '$0',
+    lockAtIso: '2026-03-27T12:00:00.000Z',
+    status: 'final',
+    lockDisabled: true,
+    testMode: true,
+    salaryCap: 50000,
+    rosterSize: 6,
+    entryNumberLabel: '22/25',
+  },
+  {
     id: 'week-4-valspar',
     weekNumber: 4,
     name: 'WEEK 4 VALSPAR',
@@ -207,7 +249,7 @@ export function getDefaultContestId() {
   const current = WEEKLY_CONTESTS.find((contest) => contest.status === 'live')
     ?? WEEKLY_CONTESTS.find((contest) => contest.status === 'open')
     ?? WEEKLY_CONTESTS[0];
-  return current?.id ?? 'week-4-valspar';
+  return current?.id ?? 'week-7-masters';
 }
 
 export function getLatestFinishedContestId() {
