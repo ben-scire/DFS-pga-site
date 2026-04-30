@@ -1,0 +1,26 @@
+{
+  "week8BuyInAmount": 10,
+  "week9BuyInAmount": 10,
+  "week10BuyInAmount": 10,
+  "week11BuyInAmount": 10,
+  "week12BuyInAmount": 10,
+  "quarter2Amount": 50,
+  "entries": [
+    { "entryName": "sam.scire", "preferredName": "Sam S", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "rohansharma99", "preferredName": "Rohan", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "samthemaam5", "preferredName": "Sam L", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "yimmerdoe", "preferredName": "Yimmer", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "eions", "preferredName": "Eoin", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": false, "totalPaid": 0 },
+    { "entryName": "wyaggy3", "preferredName": "Yaggy", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "jpetruney", "preferredName": "Petruney", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "amac", "preferredName": "amac", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": false, "totalPaid": 0 },
+    { "entryName": "tomlinsonj15", "preferredName": "Jay", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": false, "totalPaid": 0 },
+    { "entryName": "abboduece22", "preferredName": "Abbo", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": false, "totalPaid": 0 },
+    { "entryName": "bscire", "preferredName": "Ben", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "uncle neal", "preferredName": "Uncle Neal", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "johncastronovo", "preferredName": "Castronovo", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "finsmaniac", "preferredName": "Fins", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 },
+    { "entryName": "cm30", "preferredName": "Murph", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": false, "totalPaid": 0 },
+    { "entryName": "capc", "preferredName": "CC", "week8Paid": false, "week9Paid": false, "week10Paid": false, "week11Paid": false, "week12Paid": false, "quarter2Paid": true, "totalPaid": 50 }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "eventId": 8,
+  "eventName": "RBC Heritage",
+  "activePlayers": 16,
+  "entries": [
+    { "entryId": "sam.scire", "entryName": "sam.scire", "weeklyFantasyPoints": 501.5 },
+    { "entryId": "rohansharma99", "entryName": "rohansharma99", "weeklyFantasyPoints": 498.5 },
+    { "entryId": "samthemaam5", "entryName": "samthemaam5", "weeklyFantasyPoints": 484.5 },
+    { "entryId": "yimmerdoe", "entryName": "yimmerdoe", "weeklyFantasyPoints": 484.0 },
+    { "entryId": "eions", "entryName": "eions", "weeklyFantasyPoints": 483.5 },
+    { "entryId": "wyaggy3", "entryName": "wyaggy3", "weeklyFantasyPoints": 476.0 },
+    { "entryId": "jpetruney", "entryName": "jpetruney", "weeklyFantasyPoints": 473.0 },
+    { "entryId": "amac", "entryName": "amac", "weeklyFantasyPoints": 469.0 },
+    { "entryId": "tomlinsonj15", "entryName": "tomlinsonj15", "weeklyFantasyPoints": 464.5 },
+    { "entryId": "abboduece22", "entryName": "abboduece22", "weeklyFantasyPoints": 460.0 },
+    { "entryId": "bscire", "entryName": "bscire", "weeklyFantasyPoints": 453.5 },
+    { "entryId": "uncle-neal", "entryName": "uncle neal", "weeklyFantasyPoints": 450.5 },
+    { "entryId": "johncastronovo", "entryName": "johncastronovo", "weeklyFantasyPoints": 448.0 },
+    { "entryId": "finsmaniac", "entryName": "finsmaniac", "weeklyFantasyPoints": 438.0 },
+    { "entryId": "cm30", "entryName": "cm30", "weeklyFantasyPoints": 431.0 },
+    { "entryId": "capc", "entryName": "capc", "weeklyFantasyPoints": 0.0, "noRank": true, "feeOverride": 50 }
+  ]
+}
