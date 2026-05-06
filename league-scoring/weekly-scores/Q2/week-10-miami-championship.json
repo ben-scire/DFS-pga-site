@@ -1,0 +1,24 @@
+{
+  "eventId": 10,
+  "eventName": "Miami Championship",
+  "activePlayers": 17,
+  "entries": [
+    { "entryId": "capc", "entryName": "capc", "weeklyFantasyPoints": 512.0 },
+    { "entryId": "eions", "entryName": "eions", "weeklyFantasyPoints": 509.5 },
+    { "entryId": "wyaggy3", "entryName": "wyaggy3", "weeklyFantasyPoints": 493.0 },
+    { "entryId": "jpetruney", "entryName": "jpetruney", "weeklyFantasyPoints": 484.0 },
+    { "entryId": "amac", "entryName": "amac", "weeklyFantasyPoints": 483.5 },
+    { "entryId": "mtibaudo", "entryName": "mtibaudo", "weeklyFantasyPoints": 481.5 },
+    { "entryId": "bscire", "entryName": "bscire", "weeklyFantasyPoints": 480.5 },
+    { "entryId": "yimmerdoe", "entryName": "yimmerdoe", "weeklyFantasyPoints": 479.0 },
+    { "entryId": "uncle-neal", "entryName": "uncle neal", "weeklyFantasyPoints": 476.5 },
+    { "entryId": "samthemaam5", "entryName": "samthemaam5", "weeklyFantasyPoints": 475.0 },
+    { "entryId": "cm30", "entryName": "cm30", "weeklyFantasyPoints": 464.0 },
+    { "entryId": "finsmaniac", "entryName": "finsmaniac", "weeklyFantasyPoints": 453.0 },
+    { "entryId": "johncastronovo", "entryName": "johncastronovo", "weeklyFantasyPoints": 436.5 },
+    { "entryId": "rohansharma99", "entryName": "rohansharma99", "weeklyFantasyPoints": 417.5 },
+    { "entryId": "abboduece22", "entryName": "abboduece22", "weeklyFantasyPoints": 413.0 },
+    { "entryId": "tomlinsonj15", "entryName": "tomlinsonj15", "weeklyFantasyPoints": 400.0 },
+    { "entryId": "sam.scire", "entryName": "sam.scire", "weeklyFantasyPoints": 0.0, "noRank": true, "feeOverride": 10 }
+  ]
+}

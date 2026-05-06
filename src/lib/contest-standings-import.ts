@@ -35,7 +35,7 @@ export function parseContestStandingsCsv(csvText: string): ContestStandingsImpor
     const lineupRaw = read(row, 'Lineup');
     const lineupFromPlayerColumns = entryName ? parseLineupFromPlayerColumns(row) : [];
 
-    if (entryId && entryName && lineupRaw) {
+    if (entryName && lineupRaw) {
       const lineupPlayerNames = parseLineupNames(lineupRaw);
       if (!lineupPlayerNames.length) {
         warnings.push(`Could not parse lineup players for entry "${entryName}".`);
@@ -43,7 +43,7 @@ export function parseContestStandingsCsv(csvText: string): ContestStandingsImpor
 
       entries.push({
         rank: toNumber(read(row, 'Rank')) ?? undefined,
-        entryId,
+        entryId: entryId ?? entryName,
         entryName,
         timeRemaining: toNumber(read(row, 'TimeRemaining')) ?? undefined,
         points:
