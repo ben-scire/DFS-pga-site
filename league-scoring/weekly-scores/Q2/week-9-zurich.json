@@ -1,0 +1,24 @@
+{
+  "eventId": 9,
+  "eventName": "Zurich Classic",
+  "activePlayers": 17,
+  "entries": [
+    { "entryId": "cm30", "entryName": "cm30", "weeklyFantasyPoints": 712.0 },
+    { "entryId": "johncastronovo", "entryName": "johncastronovo", "weeklyFantasyPoints": 672.5 },
+    { "entryId": "capc", "entryName": "capc", "weeklyFantasyPoints": 669.0 },
+    { "entryId": "uncle-neal", "entryName": "uncle neal", "weeklyFantasyPoints": 651.5 },
+    { "entryId": "eions", "entryName": "eions", "weeklyFantasyPoints": 649.0 },
+    { "entryId": "sam.scire", "entryName": "sam.scire", "weeklyFantasyPoints": 648.0 },
+    { "entryId": "tomlinsonj15", "entryName": "tomlinsonj15", "weeklyFantasyPoints": 634.5 },
+    { "entryId": "mtibaudo", "entryName": "mtibaudo", "weeklyFantasyPoints": 632.5 },
+    { "entryId": "rohansharma99", "entryName": "rohansharma99", "weeklyFantasyPoints": 603.0 },
+    { "entryId": "amac", "entryName": "amac", "weeklyFantasyPoints": 562.0 },
+    { "entryId": "yimmerdoe", "entryName": "yimmerdoe", "weeklyFantasyPoints": 560.0 },
+    { "entryId": "bscire", "entryName": "bscire", "weeklyFantasyPoints": 541.0 },
+    { "entryId": "samthemaam5", "entryName": "samthemaam5", "weeklyFantasyPoints": 500.5 },
+    { "entryId": "finsmaniac", "entryName": "finsmaniac", "weeklyFantasyPoints": 495.5 },
+    { "entryId": "wyaggy3", "entryName": "wyaggy3", "weeklyFantasyPoints": 480.0 },
+    { "entryId": "jpetruney", "entryName": "jpetruney", "weeklyFantasyPoints": 451.0 },
+    { "entryId": "abboduece22", "entryName": "abboduece22", "weeklyFantasyPoints": 427.5 }
+  ]
+}

@@ -5,8 +5,8 @@ Update league standings from weekly-scores JSON files.
 Modes
 -----
 Default (no flags):
-    Recompute standings from weekly-scores/*.json and write both
-    standings-template.json and season-standings.json.
+    Recompute standings from weekly-scores/*.json and write
+    season-standings.json plus the current quarter standings file.
 
 --contest-id <id>:
     Pull lineups and scores from Firestore for the given contest, write
@@ -373,7 +373,7 @@ def load_schedule(league_dir: Path) -> List[ScheduleEvent]:
 def load_weekly_files(weekly_dir: Path) -> List[Tuple[int, Dict]]:
     weekly_dir.mkdir(parents=True, exist_ok=True)
     rows: List[Tuple[int, Dict]] = []
-    for path in sorted(weekly_dir.glob("*.json")):
+    for path in sorted(weekly_dir.rglob("*.json")):
         obj = json.loads(path.read_text(encoding="utf-8"))
         rows.append((int(obj["eventId"]), obj))
     rows.sort(key=lambda row: row[0])
@@ -417,7 +417,8 @@ def compute_standings(
     for event_id, weekly in weekly_data:
         event = event_by_id.get(event_id)
         tier = event.tier if event else "Standard"
-        ranked = rank_entries(weekly.get("entries", []))
+        raw_entries = weekly.get("entries", [])
+        ranked = rank_entries(raw_entries)
 
         num_entries = len(ranked)
         if num_entries == 0:
@@ -427,11 +428,24 @@ def compute_standings(
         scale = num_entries / BASE_POOL_SIZE
         payouts = [int(payout * scale) for payout in WEEKLY_PAYOUTS.get(tier, WEEKLY_PAYOUTS["Standard"])]
 
-        tie_groups: Dict[int, List[int]] = defaultdict(list)
-        for idx, row in enumerate(ranked):
-            tie_groups[row["rank"]].append(idx)
+        for entry in raw_entries:
+            entry_id = str(entry.get("entryId") or "").strip()
+            entry_name = str(entry.get("entryName") or "").strip()
+            if not entry_id:
+                continue
+            rec = by_entry[entry_id]
+            rec["entryId"] = entry_id
+            if entry_name:
+                rec["entryName"] = entry_name
+
+            fee_override = entry.get("feeOverride")
+            if isinstance(fee_override, (int, float)):
+                rec["fees"] += float(fee_override)
+            elif not bool(entry.get("noRank")) and not bool(entry.get("noFee")):
+                rec["fees"] += fee_per_user
 
         tie_avg_points_by_rank: Dict[int, float] = {}
+        tie_avg_payout_by_rank: Dict[int, float] = {}
         idx = 0
         while idx < len(ranked):
             tie_rank = ranked[idx]["rank"]
@@ -446,58 +460,29 @@ def compute_standings(
             for pos in occupied_positions:
                 occupied_points.append(points_table[pos - 1] if 1 <= pos <= len(points_table) else 0)
             tie_avg_points_by_rank[tie_rank] = sum(occupied_points) / tied_count if tied_count else 0
-            idx = j
-
-        tie_avg_points_by_rank: Dict[int, float] = {}
-        idx = 0
-        while idx < len(ranked):
-            tie_rank = ranked[idx]["rank"]
-            tie_score = ranked[idx]["weeklyFantasyPoints"]
-            j = idx + 1
-            while j < len(ranked) and ranked[j]["weeklyFantasyPoints"] == tie_score:
-                j += 1
-            tied_count = j - idx
-            occupied_positions = range(tie_rank, tie_rank + tied_count)
-            occupied_points = []
-            points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
             for pos in occupied_positions:
-                occupied_points.append(points_table[pos - 1] if 1 <= pos <= len(points_table) else 0)
-            tie_avg_points_by_rank[tie_rank] = sum(occupied_points) / tied_count if tied_count else 0
+                payout_idx = pos - 1
+                if 0 <= payout_idx < len(payouts):
+                    tie_avg_payout_by_rank.setdefault(tie_rank, 0.0)
+                    tie_avg_payout_by_rank[tie_rank] += payouts[payout_idx]
+            if tie_rank in tie_avg_payout_by_rank and tied_count:
+                tie_avg_payout_by_rank[tie_rank] /= tied_count
             idx = j
 
-        tie_avg_points_by_rank: Dict[int, float] = {}
-        idx = 0
-        while idx < len(ranked):
-            tie_rank = ranked[idx]["rank"]
-            tie_score = ranked[idx]["weeklyFantasyPoints"]
-            j = idx + 1
-            while j < len(ranked) and ranked[j]["weeklyFantasyPoints"] == tie_score:
-                j += 1
-            tied_count = j - idx
-            occupied_positions = range(tie_rank, tie_rank + tied_count)
-            occupied_points = []
-            points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
-            for pos in occupied_positions:
-                occupied_points.append(points_table[pos - 1] if 1 <= pos <= len(points_table) else 0)
-            tie_avg_points_by_rank[tie_rank] = sum(occupied_points) / tied_count if tied_count else 0
-            idx = j
-
-        for i, row in enumerate(ranked):
+        for row in ranked:
             entry_id = row["entryId"]
             rec = by_entry[entry_id]
             rec["entryId"] = entry_id
             rec["entryName"] = row["entryName"]
             rec["weeksEntered"] += 1
             rec["weeklyFantasyPointsTotal"] += row["weeklyFantasyPoints"]
-            rec["fees"] += fee_per_user
 
             rnk = row["rank"]
             base = tie_avg_points_by_rank.get(rnk, 0)
             rec["championshipPoints"] += base
             if rnk == 1:
                 rec["weeklyWins"] += 1
-            if i < payout_places:
-                rec["weeklyPayouts"] += distributable * split[i]
+            rec["weeklyPayouts"] += tie_avg_payout_by_rank.get(rnk, 0.0)
 
     # Quarterly payouts only once quarter finale week exists in weekly files.
     events_by_quarter: Dict[int, List[int]] = defaultdict(list)
@@ -522,17 +507,30 @@ def compute_standings(
             event = event_by_id.get(event_id)
             tier = event.tier if event else "Standard"
             ranked = rank_entries(weekly.get("entries", []))
-            active_players = max(active_players, len(ranked))
-            tie_groups: Dict[int, List[int]] = defaultdict(list)
-            for idx, row in enumerate(ranked):
-                tie_groups[row["rank"]].append(idx)
+            active_players_override = weekly.get("activePlayers")
+            if isinstance(active_players_override, (int, float)):
+                active_players = max(active_players, int(active_players_override))
+            else:
+                active_players = max(active_players, len(ranked))
+            tie_avg_points_by_rank: Dict[int, float] = {}
+            idx = 0
+            while idx < len(ranked):
+                tie_rank = ranked[idx]["rank"]
+                tie_score = ranked[idx]["weeklyFantasyPoints"]
+                j = idx + 1
+                while j < len(ranked) and ranked[j]["weeklyFantasyPoints"] == tie_score:
+                    j += 1
+                tied_count = j - idx
+                occupied_positions = range(tie_rank, tie_rank + tied_count)
+                points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
+                occupied_points = [
+                    points_table[pos - 1] if 1 <= pos <= len(points_table) else 0 for pos in occupied_positions
+                ]
+                tie_avg_points_by_rank[tie_rank] = sum(occupied_points) / tied_count if tied_count else 0
+                idx = j
             for row in ranked:
                 rank = row["rank"]
-                group_indices = tie_groups[rank]
-                group_size = len(group_indices)
-                points_table = CHAMPIONSHIP_POINTS_BY_TIER.get(tier, CHAMPIONSHIP_POINTS_BY_TIER["Standard"])
-                points_sum = sum(points_table[idx] if idx < len(points_table) else 0 for idx in group_indices)
-                quarter_points[row["entryId"]] += points_sum / group_size
+                quarter_points[row["entryId"]] += tie_avg_points_by_rank.get(rank, 0.0)
 
         quarter_sorted = sorted(quarter_points.items(), key=lambda item: item[1], reverse=True)
         scale = active_players / BASE_POOL_SIZE
@@ -548,19 +546,18 @@ def compute_standings(
 
     rows = []
     for record in by_entry.values():
-        points = record["championshipPoints"]
         rows.append(
             {
                 "rank": 0,
-                "entryId": rec["entryId"],
-                "entryName": rec["entryName"],
-                "championshipPoints": round(rec["championshipPoints"], 2),
-                "netDollars": round(rec["weeklyPayouts"] - rec["fees"], 2),
-                "weeklyFantasyPointsTotal": round(rec["weeklyFantasyPointsTotal"], 1),
-                "totalPointsScored": round(rec["weeklyFantasyPointsTotal"], 1),
-                "weeklyWins": int(rec["weeklyWins"]),
-                "previousWeekFinish": previous_week_finish_by_entry.get(rec["entryId"]),
-                "weeksEntered": int(rec["weeksEntered"]),
+                "entryId": record["entryId"],
+                "entryName": record["entryName"],
+                "championshipPoints": round(record["championshipPoints"], 2),
+                "netDollars": round(record["weeklyPayouts"] - record["fees"], 2),
+                "weeklyFantasyPointsTotal": round(record["weeklyFantasyPointsTotal"], 1),
+                "totalPointsScored": round(record["weeklyFantasyPointsTotal"], 1),
+                "weeklyWins": int(record["weeklyWins"]),
+                "previousWeekFinish": previous_week_finish_by_entry.get(record["entryId"]),
+                "weeksEntered": int(record["weeksEntered"]),
             }
         )
 
@@ -580,14 +577,61 @@ def compute_standings(
     return rows
 
 
-def _write_standings_outputs(league_dir: Path, standings: List[Dict]) -> None:
-    payload = json.dumps(standings, indent=2)
-    template_path = league_dir / "standings-template.json"
+def _latest_quarter_with_data(schedule: List[ScheduleEvent], weekly_data: List[Tuple[int, Dict]]) -> Optional[int]:
+    if not weekly_data:
+        return None
+    event_by_id = {event.id: event for event in schedule}
+    latest_event_id = max(event_id for event_id, _weekly in weekly_data)
+    latest_event = event_by_id.get(latest_event_id)
+    return latest_event.quarter if latest_event else None
+
+
+def _filter_weekly_data_for_quarter(
+    schedule: List[ScheduleEvent],
+    weekly_data: List[Tuple[int, Dict]],
+    quarter: int,
+) -> List[Tuple[int, Dict]]:
+    event_ids = {event.id for event in schedule if event.quarter == quarter}
+    return [(event_id, weekly) for event_id, weekly in weekly_data if event_id in event_ids]
+
+
+def _seed_entries_from_weekly_data(weekly_data: List[Tuple[int, Dict]]) -> List[Dict[str, str]]:
+    seeded: Dict[str, Dict[str, str]] = {}
+    for _event_id, weekly in weekly_data:
+        for entry in weekly.get("entries", []):
+            entry_id = str(entry.get("entryId") or "").strip()
+            entry_name = str(entry.get("entryName") or "").strip()
+            if not entry_id or not entry_name:
+                continue
+            seeded[entry_id] = {"entryId": entry_id, "entryName": entry_name}
+    return [seeded[entry_id] for entry_id in sorted(seeded)]
+
+
+def _write_json(path: Path, payload_obj: Any) -> None:
+    path.write_text(json.dumps(payload_obj, indent=2) + "\n", encoding="utf-8")
+    count = len(payload_obj) if isinstance(payload_obj, list) else 1
+    print(f"Wrote {path}  ({count} entries)")
+
+
+def _write_standings_outputs(
+    league_dir: Path,
+    schedule: List[ScheduleEvent],
+    weekly_data: List[Tuple[int, Dict]],
+    standings: List[Dict],
+    all_entries: List[Dict[str, str]],
+) -> None:
     season_path = league_dir / "season-standings.json"
-    template_path.write_text(payload, encoding="utf-8")
-    season_path.write_text(payload, encoding="utf-8")
-    print(f"Wrote {template_path}  ({len(standings)} entries)")
-    print(f"Wrote {season_path}  ({len(standings)} entries)")
+    _write_json(season_path, standings)
+
+    current_quarter = _latest_quarter_with_data(schedule, weekly_data)
+    if current_quarter is None:
+        return
+
+    quarter_weekly_data = _filter_weekly_data_for_quarter(schedule, weekly_data, current_quarter)
+    quarter_entries = _seed_entries_from_weekly_data(quarter_weekly_data)
+    quarter_standings = compute_standings(schedule, quarter_weekly_data, all_entries=quarter_entries)
+    quarter_path = league_dir / f"q{current_quarter}-standings.json"
+    _write_json(quarter_path, quarter_standings)
 
 
 def _run_official_mode(league_dir: Path, schedule: List[ScheduleEvent]) -> None:
@@ -597,8 +641,9 @@ def _run_official_mode(league_dir: Path, schedule: List[ScheduleEvent]) -> None:
         print("No weekly-scores/*.json files found. Nothing to do.")
         return
 
-    standings = compute_standings(schedule, weekly_data, all_entries=_load_all_entries(league_dir))
-    _write_standings_outputs(league_dir, standings)
+    all_entries = _load_all_entries(league_dir)
+    standings = compute_standings(schedule, weekly_data, all_entries=all_entries)
+    _write_standings_outputs(league_dir, schedule, weekly_data, standings, all_entries)
 
 
 def _run_firestore_mode(
@@ -624,14 +669,16 @@ def _run_firestore_mode(
         print("  If they played, add them manually to the weekly JSON before committing.\n")
 
     weekly_dir = league_dir / "weekly-scores"
-    weekly_dir.mkdir(parents=True, exist_ok=True)
-    weekly_path = weekly_dir / f"{contest_id}.json"
+    quarter_dir = weekly_dir / f"Q{event.quarter}"
+    quarter_dir.mkdir(parents=True, exist_ok=True)
+    weekly_path = quarter_dir / f"{contest_id}.json"
     weekly_obj = {"eventId": event.id, "eventName": event.name, "entries": entries}
     weekly_path.write_text(json.dumps(weekly_obj, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {weekly_path}  ({len(entries)} entries)")
 
-    standings = compute_standings(schedule, load_weekly_files(weekly_dir), all_entries=all_known)
-    _write_standings_outputs(league_dir, standings)
+    weekly_data = load_weekly_files(weekly_dir)
+    standings = compute_standings(schedule, weekly_data, all_entries=all_known)
+    _write_standings_outputs(league_dir, schedule, weekly_data, standings, all_known)
 
 
 def _run_ben_mode(

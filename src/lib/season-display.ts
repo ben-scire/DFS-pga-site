@@ -1,11 +1,16 @@
 import standingsData from '../../league-scoring/season-standings.json';
+import q2StandingsData from '../../league-scoring/q2-standings.json';
 import scheduleData from '../../league-scoring/schedule.json';
-import weekOneData from '../../league-scoring/weekly-scores/week-1-cognizant.json';
-import weekTwoData from '../../league-scoring/weekly-scores/week-2-arnold-palmer.json';
-import weekThreeData from '../../league-scoring/weekly-scores/week-3-players.json';
-import weekFourData from '../../league-scoring/weekly-scores/week-4-valspar.json';
-import weekFiveData from '../../league-scoring/weekly-scores/week-5-houston-open.json';
-import weekSixData from '../../league-scoring/weekly-scores/week-6-valero-texas-open.json';
+import weekOneData from '../../league-scoring/weekly-scores/Q1/week-1-cognizant.json';
+import weekTwoData from '../../league-scoring/weekly-scores/Q1/week-2-arnold-palmer.json';
+import weekThreeData from '../../league-scoring/weekly-scores/Q1/week-3-players.json';
+import weekFourData from '../../league-scoring/weekly-scores/Q1/week-4-valspar.json';
+import weekFiveData from '../../league-scoring/weekly-scores/Q1/week-5-houston-open.json';
+import weekSixData from '../../league-scoring/weekly-scores/Q1/week-6-valero-texas-open.json';
+import weekSevenData from '../../league-scoring/weekly-scores/Q1/week-7-masters.json';
+import weekEightData from '../../league-scoring/weekly-scores/Q2/week-8-heritage.json';
+import weekNineData from '../../league-scoring/weekly-scores/Q2/week-9-zurich.json';
+import weekTenData from '../../league-scoring/weekly-scores/Q2/week-10-miami-championship.json';
 import { TEST_USER_DIRECTORY } from '@/lib/test-users';
 
 export type StandingsEntry = {
@@ -32,6 +37,7 @@ export type WeeklyScoreEntry = {
   entryId: string;
   entryName: string;
   weeklyFantasyPoints: number;
+  noRank?: boolean;
 };
 
 export type WeeklyScoreFile = {
@@ -65,6 +71,15 @@ export type SeasonStandingsDisplayRow = StandingsEntry & {
   finishByEventId: Record<number, string>;
 };
 
+export type LatestWeeklyFinalRow = {
+  rank: number;
+  finishLabel: string;
+  entryId: string;
+  displayName: string;
+  weeklyFantasyPoints: number;
+  payout: number;
+};
+
 const EVENT_SHORT_LABELS: Record<number, string> = {
   1: 'Cognizant',
   2: 'Arnold Palmer',
@@ -73,6 +88,11 @@ const EVENT_SHORT_LABELS: Record<number, string> = {
   5: 'Houston',
   6: 'Valero',
   7: 'Masters',
+  8: 'Heritage',
+  9: 'Zurich',
+  10: 'Miami',
+  11: 'Truist',
+  12: 'PGA',
 };
 
 const USER_DIRECTORY_BY_SLUG = new Map(
@@ -103,13 +123,113 @@ export const SCORING_MATRIX: ScoringMatrixRow[] = [
   { finish: 'No Show', major: { points: 0 }, signature: { points: 0 }, standard: { points: 0 } },
 ];
 
+/** Q2 full-field (16 quarter pool) weekly prize splits — championship points unchanged. */
+const Q2_WEEKLY_PAYOUTS_16 = {
+  standard: [54, 36, 29, 18],
+  signature: [76, 36, 25, 14, 7],
+  major: [83, 40, 18, 10, 7],
+} as const;
+const BASE_POOL_SIZE = 22;
+const WEEKLY_PAYOUTS = {
+  Standard: [75, 50, 40, 25],
+  Signature: [105, 50, 35, 20, 10],
+  Major: [115, 55, 25, 15, 10],
+} as const;
+
 export const SEASON_SCHEDULE = scheduleData as ScheduleEvent[];
-export const COMPLETED_WEEKLY_SCORES = [weekOneData, weekTwoData, weekThreeData, weekFourData, weekFiveData, weekSixData]
+export const COMPLETED_WEEKLY_SCORES = [
+  weekOneData,
+  weekTwoData,
+  weekThreeData,
+  weekFourData,
+  weekFiveData,
+  weekSixData,
+  weekSevenData,
+  weekEightData,
+  weekNineData,
+  weekTenData,
+]
   .map((week) => week as WeeklyScoreFile)
   .sort((left, right) => left.eventId - right.eventId);
 
+const Q2_COMPLETED_WEEKLY_SCORES = [weekEightData, weekNineData, weekTenData]
+  .map((week) => week as WeeklyScoreFile)
+  .sort(
+  (left, right) => left.eventId - right.eventId
+);
+
 export function formatScoringCell(cell: ScoringCell) {
   return typeof cell.payout === 'number' ? `${cell.points} ($${cell.payout})` : `${cell.points}`;
+}
+
+/** Finishes 1st–16th plus No Show; points match league matrix, payouts = Q2 16-pool weekly splits. */
+export function getQ2SixteenPlayerScoringMatrix(): ScoringMatrixRow[] {
+  const { standard: stdP, signature: sigP, major: majP } = Q2_WEEKLY_PAYOUTS_16;
+  const top16 = SCORING_MATRIX.slice(0, 16).map((row, idx) => ({
+    finish: row.finish,
+    major: {
+      points: row.major.points,
+      payout: idx < majP.length ? majP[idx] : undefined,
+    },
+    signature: {
+      points: row.signature.points,
+      payout: idx < sigP.length ? sigP[idx] : undefined,
+    },
+    standard: {
+      points: row.standard.points,
+      payout: idx < stdP.length ? stdP[idx] : undefined,
+    },
+  }));
+  return [...top16, SCORING_MATRIX[SCORING_MATRIX.length - 1]];
+}
+
+export function getQuarterScheduleEvents(quarter: number): ScheduleEvent[] {
+  return SEASON_SCHEDULE.filter((event) => event.quarter === quarter).sort((left, right) => left.id - right.id);
+}
+
+export function getLatestWeeklyFinalStandings(): {
+  eventName: string;
+  tier: ScheduleEvent['tier'];
+  rows: LatestWeeklyFinalRow[];
+} | null {
+  const latest = COMPLETED_WEEKLY_SCORES.at(-1);
+  if (!latest) return null;
+
+  const tier = SEASON_SCHEDULE.find((event) => event.id === latest.eventId)?.tier ?? 'Standard';
+  const rankedEntries = rankWeeklyEntries(latest.entries);
+  const scale = rankedEntries.length / BASE_POOL_SIZE;
+  const payouts = WEEKLY_PAYOUTS[tier].map((value) => Math.floor(value * scale));
+
+  const payoutByRank = new Map<number, number>();
+  let idx = 0;
+  while (idx < rankedEntries.length) {
+    const tieRank = rankedEntries[idx].rank;
+    const tieScore = rankedEntries[idx].weeklyFantasyPoints;
+    let j = idx + 1;
+    while (j < rankedEntries.length && rankedEntries[j].weeklyFantasyPoints === tieScore) {
+      j += 1;
+    }
+    const tiedCount = j - idx;
+    let payoutTotal = 0;
+    for (let pos = tieRank; pos < tieRank + tiedCount; pos += 1) {
+      payoutTotal += payouts[pos - 1] ?? 0;
+    }
+    payoutByRank.set(tieRank, tiedCount > 0 ? payoutTotal / tiedCount : 0);
+    idx = j;
+  }
+
+  return {
+    eventName: latest.eventName,
+    tier,
+    rows: rankedEntries.map((entry) => ({
+      rank: entry.rank,
+      finishLabel: entry.finishLabel,
+      entryId: entry.entryId,
+      displayName: getPreferredDisplayName(entry.entryId, entry.entryName),
+      weeklyFantasyPoints: entry.weeklyFantasyPoints,
+      payout: payoutByRank.get(entry.rank) ?? 0,
+    })),
+  };
 }
 
 export function getShortEventLabel(eventId: number, eventName: string): string {
@@ -130,9 +250,11 @@ export function getPreferredDisplayName(entryId: string, fallbackName: string): 
     .sort((left, right) => left.length - right.length || left.localeCompare(right))[0];
 }
 
-export function getSeasonStandingsRows(): SeasonStandingsDisplayRow[] {
-  const eventColumns = getSeasonEventColumns();
-  const sortedStandings = [...(standingsData as StandingsEntry[])].sort((left, right) => {
+function getStandingsDisplayRows(
+  rawStandings: StandingsEntry[],
+  eventColumns: EventFinishColumn[]
+): SeasonStandingsDisplayRow[] {
+  const sortedStandings = [...rawStandings].sort((left, right) => {
     const pointsDelta = (right.championshipPoints ?? -1) - (left.championshipPoints ?? -1);
     if (pointsDelta !== 0) return pointsDelta;
     return (right.weeklyFantasyPointsTotal ?? -1) - (left.weeklyFantasyPointsTotal ?? -1);
@@ -147,8 +269,16 @@ export function getSeasonStandingsRows(): SeasonStandingsDisplayRow[] {
   }));
 }
 
-export function getSeasonEventColumns(): EventFinishColumn[] {
-  return COMPLETED_WEEKLY_SCORES
+export function getSeasonStandingsRows(): SeasonStandingsDisplayRow[] {
+  return getStandingsDisplayRows(standingsData as StandingsEntry[], getSeasonEventColumns());
+}
+
+export function getQ2StandingsRows(): SeasonStandingsDisplayRow[] {
+  return getStandingsDisplayRows(q2StandingsData as StandingsEntry[], getQ2EventColumns());
+}
+
+function buildEventColumnsFromWeeklies(weeklies: WeeklyScoreFile[]): EventFinishColumn[] {
+  return weeklies
     .slice()
     .sort((left, right) => right.eventId - left.eventId)
     .map((weeklyScore) => {
@@ -164,12 +294,32 @@ export function getSeasonEventColumns(): EventFinishColumn[] {
     });
 }
 
+export function getSeasonEventColumns(): EventFinishColumn[] {
+  return buildEventColumnsFromWeeklies(COMPLETED_WEEKLY_SCORES);
+}
+
+export function getQ2EventColumns(): EventFinishColumn[] {
+  return buildEventColumnsFromWeeklies(Q2_COMPLETED_WEEKLY_SCORES);
+}
+
 export function getLatestCompletedEventId(): number {
-  return COMPLETED_WEEKLY_SCORES.at(-1)?.eventId ?? 0;
+  return COMPLETED_WEEKLY_SCORES.reduce((max, week) => Math.max(max, week.eventId), 0);
+}
+
+/** Latest schedule event id in this quarter that has a weekly-scores file (avoids Q3+ showing as "upcoming" when only Q2 progressed). */
+export function getLatestCompletedEventIdForQuarter(quarter: number): number {
+  const completedIds = new Set(COMPLETED_WEEKLY_SCORES.map((week) => week.eventId));
+  let max = 0;
+  for (const event of SEASON_SCHEDULE) {
+    if (event.quarter === quarter && completedIds.has(event.id)) {
+      max = Math.max(max, event.id);
+    }
+  }
+  return max;
 }
 
 export function getUpcomingQuarterEvents(quarter: number): ScheduleEvent[] {
-  const latestCompletedEventId = getLatestCompletedEventId();
+  const latestCompletedEventId = getLatestCompletedEventIdForQuarter(quarter);
   return SEASON_SCHEDULE.filter((event) => event.quarter === quarter && event.id > latestCompletedEventId);
 }
 
@@ -196,6 +346,7 @@ function buildFinishMap(entries: WeeklyScoreEntry[]): Record<string, string> {
 
 function rankWeeklyEntries(entries: WeeklyScoreEntry[]) {
   const sortedEntries = entries
+    .filter((entry) => !entry.noRank)
     .slice()
     .sort((left, right) => right.weeklyFantasyPoints - left.weeklyFantasyPoints || left.entryId.localeCompare(right.entryId));
 
