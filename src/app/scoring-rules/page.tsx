@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Medal } from 'lucide-react';
 import MainTabsHeader from '@/components/main-tabs-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +14,6 @@ function getTierPanelClass(tier: 'Major' | 'Signature' | 'Standard') {
 }
 
 export default function ScoringRulesPage() {
-  const router = useRouter();
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
 
@@ -23,22 +21,15 @@ export default function ScoringRulesPage() {
     const unsubscribe = subscribeAuthSession((nextSession) => {
       setSession(nextSession);
       setCheckingSession(false);
-      if (!nextSession) {
-        router.replace('/');
-      }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [router]);
+  }, []);
 
   if (checkingSession) {
     return <div className="min-h-screen bg-[#040914]" />;
-  }
-
-  if (!session) {
-    return null;
   }
 
   return (

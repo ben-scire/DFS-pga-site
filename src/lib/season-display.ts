@@ -1,4 +1,5 @@
 import standingsData from '../../league-scoring/season-standings.json';
+import q1StandingsData from '../../league-scoring/q1-standings.json';
 import q2StandingsData from '../../league-scoring/q2-standings.json';
 import scheduleData from '../../league-scoring/schedule.json';
 import weekOneData from '../../league-scoring/weekly-scores/Q1/week-1-cognizant.json';
@@ -80,6 +81,10 @@ export type LatestWeeklyFinalRow = {
   payout: number;
 };
 
+export type QuarterScheduleDisplayRow = ScheduleEvent & {
+  winner: string;
+};
+
 const EVENT_SHORT_LABELS: Record<number, string> = {
   1: 'Cognizant',
   2: 'Arnold Palmer',
@@ -157,6 +162,18 @@ const Q2_COMPLETED_WEEKLY_SCORES = [weekEightData, weekNineData, weekTenData]
   .sort(
   (left, right) => left.eventId - right.eventId
 );
+
+const Q1_COMPLETED_WEEKLY_SCORES = [
+  weekOneData,
+  weekTwoData,
+  weekThreeData,
+  weekFourData,
+  weekFiveData,
+  weekSixData,
+  weekSevenData,
+]
+  .map((week) => week as WeeklyScoreFile)
+  .sort((left, right) => left.eventId - right.eventId);
 
 export function formatScoringCell(cell: ScoringCell) {
   return typeof cell.payout === 'number' ? `${cell.points} ($${cell.payout})` : `${cell.points}`;
@@ -277,6 +294,10 @@ export function getQ2StandingsRows(): SeasonStandingsDisplayRow[] {
   return getStandingsDisplayRows(q2StandingsData as StandingsEntry[], getQ2EventColumns());
 }
 
+export function getQ1StandingsRows(): SeasonStandingsDisplayRow[] {
+  return getStandingsDisplayRows(q1StandingsData as StandingsEntry[], getQ1EventColumns());
+}
+
 function buildEventColumnsFromWeeklies(weeklies: WeeklyScoreFile[]): EventFinishColumn[] {
   return weeklies
     .slice()
@@ -300,6 +321,22 @@ export function getSeasonEventColumns(): EventFinishColumn[] {
 
 export function getQ2EventColumns(): EventFinishColumn[] {
   return buildEventColumnsFromWeeklies(Q2_COMPLETED_WEEKLY_SCORES);
+}
+
+export function getQ1EventColumns(): EventFinishColumn[] {
+  return buildEventColumnsFromWeeklies(Q1_COMPLETED_WEEKLY_SCORES);
+}
+
+export function getQuarterScheduleRows(quarter: number): QuarterScheduleDisplayRow[] {
+  const weeklyByEventId = new Map(COMPLETED_WEEKLY_SCORES.map((week) => [week.eventId, week]));
+
+  return getQuarterScheduleEvents(quarter).map((event) => {
+    const weeklyScore = weeklyByEventId.get(event.id);
+    return {
+      ...event,
+      winner: weeklyScore ? getWeeklyWinnerLabel(weeklyScore) : '—',
+    };
+  });
 }
 
 export function getLatestCompletedEventId(): number {
@@ -342,6 +379,16 @@ function buildFinishMap(entries: WeeklyScoreEntry[]): Record<string, string> {
   }
 
   return finishByEntryId;
+}
+
+function getWeeklyWinnerLabel(weeklyScore: WeeklyScoreFile): string {
+  const rankedEntries = rankWeeklyEntries(weeklyScore.entries);
+  const winners = rankedEntries.filter((entry) => entry.rank === 1);
+  if (!winners.length) return '—';
+
+  return winners
+    .map((entry) => getPreferredDisplayName(entry.entryId, entry.entryName))
+    .join(' / ');
 }
 
 function rankWeeklyEntries(entries: WeeklyScoreEntry[]) {

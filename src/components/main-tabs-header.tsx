@@ -1,49 +1,33 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { signOutAuthSession, type AuthSession } from '@/lib/firebase-auth';
-import { getDefaultContestId, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
+import type { AuthSession } from '@/lib/firebase-auth';
+import { getDefaultContestId } from '@/lib/weekly-lineup-seed';
 import { cn } from '@/lib/utils';
 
 type MainTabKey = 'home' | 'lineup' | 'week-standings' | 'season' | 'scoring-rules' | 'admin';
 
 interface MainTabsHeaderProps {
-  session: AuthSession;
+  session?: AuthSession | null;
   activeTab: MainTabKey;
   contestId?: string;
   className?: string;
 }
 
 function tabHref(tab: MainTabKey, contestId: string): string {
-  const contest = getWeeklyContestById(contestId);
-  const contestLiveByStatus = contest?.status === 'live' || contest?.status === 'final';
-  const contestLiveByLock = contest ? Date.now() >= new Date(contest.lockAtIso).getTime() : false;
-  const useLiveLineup = contestLiveByStatus || contestLiveByLock;
-
-  if (tab === 'home') return `/contests?contestId=${encodeURIComponent(contestId)}`;
-  if (tab === 'lineup') {
-    return useLiveLineup
-      ? `/live-lineup?contestId=${encodeURIComponent(contestId)}`
-      : `/lineup?contestId=${encodeURIComponent(contestId)}`;
-  }
   if (tab === 'week-standings') return `/week-standings?contestId=${encodeURIComponent(contestId)}`;
   if (tab === 'season') return '/season';
-  if (tab === 'scoring-rules') return '/scoring-rules';
-  return '/admin';
+  if (tab === 'home') return `/contests?contestId=${encodeURIComponent(contestId)}`;
+  if (tab === 'lineup') return `/live-lineup?contestId=${encodeURIComponent(contestId)}`;
+  if (tab === 'admin') return '/admin';
+  return '/scoring-rules';
 }
 
 export default function MainTabsHeader({ session, activeTab, contestId = getDefaultContestId(), className }: MainTabsHeaderProps) {
-  const router = useRouter();
-
-  const tabs: Array<{ key: MainTabKey; label: string; hidden?: boolean }> = [
-    { key: 'home', label: 'Home' },
-    { key: 'lineup', label: 'My Lineup' },
+  const tabs: Array<{ key: Extract<MainTabKey, 'week-standings' | 'season' | 'scoring-rules'>; label: string }> = [
     { key: 'week-standings', label: 'Week Standings' },
     { key: 'season', label: 'Season Standings' },
     { key: 'scoring-rules', label: 'Scoring Rules' },
-    { key: 'admin', label: 'Admin', hidden: !session.isAdmin },
   ];
 
   return (
@@ -52,7 +36,6 @@ export default function MainTabsHeader({ session, activeTab, contestId = getDefa
         <div className="overflow-x-auto">
           <div className="flex min-w-max items-center gap-2 pr-1">
             {tabs
-              .filter((tab) => !tab.hidden)
               .map((tab) => {
                 const active = tab.key === activeTab;
                 return (
@@ -73,20 +56,9 @@ export default function MainTabsHeader({ session, activeTab, contestId = getDefa
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <p className="hidden text-xs text-zinc-400 sm:block">{session.userDisplayName}</p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8 border-white/15 bg-white/5 px-3 text-xs text-zinc-100 hover:bg-white/10 sm:h-9 sm:px-4 sm:text-sm"
-            onClick={() => {
-              void signOutAuthSession().then(() => router.replace('/'));
-            }}
-          >
-            Sign Out
-          </Button>
-        </div>
+        <p className="rounded-lg border border-cyan-200/20 bg-cyan-300/10 px-3 py-1.5 text-xs font-medium text-cyan-100">
+          Public View
+        </p>
       </div>
     </header>
   );

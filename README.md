@@ -51,7 +51,7 @@ All runtime config is client-visible (`NEXT_PUBLIC_*`) because this app is stati
 Additional local/admin script env vars:
 - `DATAGOLF_LIVE_URL`: Full Data Golf live endpoint URL for polling (supports `{key}` placeholder)
 - `DATAGOLF_API_KEY`: Optional API key substituted into `DATAGOLF_LIVE_URL`
-- `DATAGOLF_POLL_INTERVAL_MS`: Poll interval for Data Golf sync script (default `30000`)
+- `DATAGOLF_POLL_INTERVAL_MS`: Poll interval for Data Golf sync script (default `3600000`, one hour)
 - `DATAGOLF_SCORING_MODE`: `dfs-rules` only (default `dfs-rules`)
 - `FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`: Required for server-side writes to `test_scores`
 
@@ -109,6 +109,8 @@ For true live push updates, expose an SSE endpoint and set `NEXT_PUBLIC_DFS_STRE
 
 ## Weekly Contest Ops (CSV + Data Golf)
 
+The public site is a static GitHub Pages build. It updates live because the browser reads Firestore; the score updater must run separately on your Mac mini or in Google Cloud.
+
 ### 1. Import DraftKings standings CSV into test users (`test_lineups`)
 
 This populates the approved test-user lineup docs from a DK contest standings export (the CSV with `Rank,EntryId,EntryName,...`).
@@ -148,7 +150,13 @@ Dry run (no Firestore writes):
 npm run sync:datagolf:scores -- --once --dry-run --url "https://feeds.datagolf.com/preds/live-hole-scores?tour=pga&file_format=json&key={key}"
 ```
 
-Continuous polling (writes Firestore, requires Admin credentials):
+One sync pass (writes Firestore, requires Admin credentials):
+
+```bash
+npm run sync:datagolf:scores:once
+```
+
+Continuous hourly polling (writes Firestore, requires Admin credentials):
 
 ```bash
 npm run sync:datagolf:scores
@@ -175,10 +183,11 @@ Notes:
 The deployed static site updates live by listening to Firestore. To keep Firestore fresh, run the sync worker on Google Cloud:
 
 ```bash
-cd /Users/vinci/dev-playground/studio
+cd /Users/nick/Cursor-Projects/DFS-pga-site
 export DATAGOLF_API_KEY="your-datagolf-key"
 export PROJECT_ID="studio-5115982885-551c8"
 export REGION="us-central1"
+export DATAGOLF_CONTEST_ID="week-11-truist"
 ./scripts/deploy-datagolf-sync-cloud-run.sh
 ```
 
@@ -186,13 +195,88 @@ What this sets up:
 - Builds `Dockerfile.datagolf-sync` and pushes image to Artifact Registry
 - Deploys Cloud Run Job `datagolf-live-sync` (runs one sync pass)
 - Stores API key in Secret Manager (`datagolf-api-key`)
-- Creates Cloud Scheduler job `datagolf-live-sync-every-minute` to trigger job every minute
+- Creates Cloud Scheduler job `datagolf-live-sync-hourly` to trigger one sync pass every hour
 
 You can override defaults with env vars before running the script:
 - `TOUR` (default `pga`)
 - `SCORING_MODE` (default `dfs-rules`)
 - `TIME_ZONE` (default `America/New_York`)
+- `DATAGOLF_CONTEST_ID` (default `week-11-truist`; set this each week)
 - `DATAGOLF_LIVE_URL` (default uses `preds/live-hole-scores`)
+
+## Live Site Weekly Runbook
+
+### Public links
+
+- `/week-standings`: live weekly leaderboard.
+- `/live-lineup?contestId=<contestId>&userId=<entryId>`: golfer-level lineup detail. The standings page links to this automatically.
+- `/season`: season and quarter standings.
+- `/scoring-rules`: scoring matrix and payout rules.
+
+### One-time setup
+
+1. Enable GitHub Pages with source `GitHub Actions`.
+2. Add the `NEXT_PUBLIC_FIREBASE_*` repository secrets used by `.github/workflows/deploy-pages.yml`.
+3. Deploy `firestore.test-week.rules` so browsers can read the current contest's `test_lineups` and `test_scores`.
+4. Keep server-side credentials local or in Google Cloud only: `GOOGLE_APPLICATION_CREDENTIALS` or `FIREBASE_SERVICE_ACCOUNT_JSON`.
+5. Keep `DATAGOLF_API_KEY` out of `NEXT_PUBLIC_*` variables.
+
+### Mac mini learning path
+
+1. Run the site locally:
+   ```bash
+   npm run dev
+   ```
+2. Open `http://localhost:9002/week-standings`.
+3. Run a dry run:
+   ```bash
+   npm run sync:datagolf:scores:once -- --dry-run
+   ```
+4. Run one write pass:
+   ```bash
+   npm run sync:datagolf:scores:once
+   ```
+5. Confirm `/week-standings` updates, then click an entry to confirm golfer scores on `/live-lineup`.
+6. If you want a Mac mini fallback scheduler, point `launchd` at:
+   ```bash
+   /usr/bin/env bash -lc 'cd /Users/nick/Cursor-Projects/DFS-pga-site && npm run sync:datagolf:scores:once'
+   ```
+   Set the interval to `3600` seconds.
+
+### Weekly checklist
+
+Before lock:
+
+1. Set the current contest in `src/lib/weekly-lineup-seed.ts` to `status: 'live'`.
+2. Confirm that contest's player pool is available through `getDefaultPlayerPool(contestId)`.
+3. Import or verify lineups:
+   ```bash
+   npm run import:standings -- --csv /absolute/path/to/contest-standings.csv --write
+   ```
+4. Confirm `firestore.test-week.rules` allows the current `contestId`.
+5. Run a Data Golf dry run:
+   ```bash
+   npm run sync:datagolf:scores:once -- --contest-id <contestId> --dry-run
+   ```
+6. Push to `main` so GitHub Pages redeploys.
+
+During the event:
+
+1. Let the hourly sync update `test_scores/{contestId}/golfers`.
+2. Check `/week-standings` for ranks and updated time.
+3. Click entries to verify golfer-level scores.
+4. If scores look wrong, check unmatched golfer names in the sync output first.
+
+After the event:
+
+1. Finalize the weekly JSON and standings:
+   ```bash
+   cd league-scoring
+   python3 update_league_standings.py --contest-id <contestId>
+   ```
+2. Review generated weekly, quarter, and season standings files.
+3. Commit and push the standings files.
+4. Move the contest out of `live` status and prepare the next week.
 
 ## Project Structure
 

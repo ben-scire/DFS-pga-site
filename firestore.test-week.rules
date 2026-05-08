@@ -24,13 +24,30 @@ service cloud.firestore {
         'bscire',
         'jake',
         'eions',
-        'unccle-neal',
+        'uncle-neal',
         'finsmaniac'
       ];
     }
 
     function isAllowedContest(contestId) {
-      return contestId in ['week-1-cognizant', 'week-2-arnold-palmer', 'week-3-players', 'week-4-valspar'];
+      return contestId in [
+        'week-1-cognizant',
+        'week-2-arnold-palmer',
+        'week-3-players',
+        'week-4-valspar',
+        'week-5-houston',
+        'week-5-houston-open',
+        'week-6-valero',
+        'week-6-valero-texas-open',
+        'week-7-masters',
+        'week-8-heritage',
+        'week-9-zurich',
+        'week-10-miami',
+        'week-10-miami-championship',
+        'week-11-truist',
+        'week-12-pga',
+        'week-12-pga-championship'
+      ];
     }
 
     function isAdminUserSlug(userSlug) {
@@ -134,11 +151,16 @@ service cloud.firestore {
     }
 
     match /test_lineups/{contestId}/entries/{userSlug} {
-      allow read: if isAllowedContest(contestId) && isApprovedUserSlug(userSlug);
+      allow read: if isAllowedContest(contestId);
       allow create, update: if isAllowedContest(contestId) &&
         isApprovedUserSlug(userSlug) &&
         isValidTestLineupPayload(request.resource.data, contestId, userSlug);
       allow delete: if false;
+    }
+
+    match /test_lineups/{contestId} {
+      allow read: if isAllowedContest(contestId);
+      allow write: if false;
     }
 
     match /test_scores/{contestId}/golfers/{golferId} {

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { CalendarDays, Scale, Trophy } from 'lucide-react';
 import MainTabsHeader from '@/components/main-tabs-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,10 +14,11 @@ import {
   getQ2EventColumns,
   getQ2SixteenPlayerScoringMatrix,
   getQ2StandingsRows,
-  getQuarterScheduleEvents,
+  getQuarterScheduleRows,
   getSeasonEventColumns,
   getSeasonStandingsRows,
   type EventFinishColumn,
+  type QuarterScheduleDisplayRow,
   type ScheduleEvent,
   type SeasonStandingsDisplayRow,
 } from '@/lib/season-display';
@@ -223,7 +224,6 @@ function StandingsTableCard({
 }
 
 export default function SeasonPage() {
-  const router = useRouter();
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
 
@@ -231,30 +231,23 @@ export default function SeasonPage() {
     const unsubscribe = subscribeAuthSession((nextSession) => {
       setSession(nextSession);
       setCheckingSession(false);
-      if (!nextSession) {
-        router.replace('/');
-      }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [router]);
+  }, []);
 
   const overallStandings = useMemo(() => getSeasonStandingsRows(), []);
   const overallColumns = useMemo(() => getSeasonEventColumns(), []);
   const q2Standings = useMemo(() => getQ2StandingsRows(), []);
   const q2Columns = useMemo(() => getQ2EventColumns(), []);
   const q2ScoringMatrix = useMemo(() => getQ2SixteenPlayerScoringMatrix(), []);
-  const q2Schedule = useMemo(() => getQuarterScheduleEvents(2), []);
+  const q2Schedule = useMemo(() => getQuarterScheduleRows(2), []);
   const latestWeeklyFinal = useMemo(() => getLatestWeeklyFinalStandings(), []);
 
   if (checkingSession) {
     return <div className="min-h-screen bg-[#040914]" />;
-  }
-
-  if (!session) {
-    return null;
   }
 
   return (
@@ -267,19 +260,19 @@ export default function SeasonPage() {
       <div className="relative mx-auto max-w-6xl space-y-3.5">
         <MainTabsHeader session={session} activeTab="season" />
 
-        <Tabs defaultValue="overall" className="w-full">
+        <Tabs defaultValue="q2" className="w-full">
           <TabsList className="flex h-auto min-h-10 w-full flex-wrap justify-start gap-1 rounded-xl border border-white/10 bg-[#111827]/90 p-1.5 text-zinc-400">
-            <TabsTrigger
-              value="overall"
-              className="rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 data-[state=active]:bg-blue-500/25 data-[state=active]:text-blue-100 data-[state=active]:shadow-none sm:text-sm"
-            >
-              Overall
-            </TabsTrigger>
             <TabsTrigger
               value="q2"
               className="rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 data-[state=active]:bg-blue-500/25 data-[state=active]:text-blue-100 data-[state=active]:shadow-none sm:text-sm"
             >
               Q2 standings
+            </TabsTrigger>
+            <TabsTrigger
+              value="overall"
+              className="rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 data-[state=active]:bg-blue-500/25 data-[state=active]:text-blue-100 data-[state=active]:shadow-none sm:text-sm"
+            >
+              Season-long
             </TabsTrigger>
             <TabsTrigger
               value="q2-scoring"
@@ -299,12 +292,18 @@ export default function SeasonPage() {
             >
               Q2 schedule
             </TabsTrigger>
+            <Link
+              href="/season/q1"
+              className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-white/[0.08] hover:text-zinc-100 sm:text-sm"
+            >
+              Q1 history
+            </Link>
           </TabsList>
 
           <TabsContent value="overall" className="mt-3">
             <StandingsTableCard
               title="Season standings (full league)"
-              description="All completed weeks from league-scoring weekly JSON, ordered newest event column first."
+              description="Season-long totals across all completed weeks. Use Q2 standings for the current quarter view."
               icon={<Trophy className="h-5 w-5 text-cyan-300" />}
               standings={overallStandings}
               eventColumns={overallColumns}
@@ -448,11 +447,11 @@ export default function SeasonPage() {
                         <th className="px-3 py-2 text-left">#</th>
                         <th className="px-3 py-2 text-left">Event</th>
                         <th className="px-3 py-2 text-left">Type</th>
-                        <th className="px-3 py-2 text-left">Notes</th>
+                        <th className="px-3 py-2 text-left">Winner</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {q2Schedule.map((event) => (
+                      {q2Schedule.map((event: QuarterScheduleDisplayRow) => (
                         <tr key={event.id} className="border-t border-white/5">
                           <td className="px-3 py-2.5 font-mono text-zinc-400">{event.id}</td>
                           <td className="px-3 py-2.5 font-medium text-zinc-100">{event.name}</td>
@@ -464,7 +463,7 @@ export default function SeasonPage() {
                             </span>
                           </td>
                           <td className="px-3 py-2.5 text-zinc-400">
-                            {event.isQuarterFinale ? 'Quarter finale' : '—'}
+                            {event.winner}
                           </td>
                         </tr>
                       ))}
