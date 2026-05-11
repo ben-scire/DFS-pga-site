@@ -12,6 +12,7 @@ import weekSevenData from '../../league-scoring/weekly-scores/Q1/week-7-masters.
 import weekEightData from '../../league-scoring/weekly-scores/Q2/week-8-heritage.json';
 import weekNineData from '../../league-scoring/weekly-scores/Q2/week-9-zurich.json';
 import weekTenData from '../../league-scoring/weekly-scores/Q2/week-10-miami-championship.json';
+import weekElevenData from '../../league-scoring/weekly-scores/Q2/week-11-truist-championship.json';
 import { TEST_USER_DIRECTORY } from '@/lib/test-users';
 
 export type StandingsEntry = {
@@ -153,11 +154,12 @@ export const COMPLETED_WEEKLY_SCORES = [
   weekEightData,
   weekNineData,
   weekTenData,
+  weekElevenData,
 ]
   .map((week) => week as WeeklyScoreFile)
   .sort((left, right) => left.eventId - right.eventId);
 
-const Q2_COMPLETED_WEEKLY_SCORES = [weekEightData, weekNineData, weekTenData]
+const Q2_COMPLETED_WEEKLY_SCORES = [weekEightData, weekNineData, weekTenData, weekElevenData]
   .map((week) => week as WeeklyScoreFile)
   .sort(
   (left, right) => left.eventId - right.eventId
