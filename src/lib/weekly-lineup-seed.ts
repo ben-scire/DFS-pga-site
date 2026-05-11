@@ -7,14 +7,28 @@ const DEFAULT_HEADSHOT = 'https://placehold.co/80x80/png';
 
 export const WEEKLY_CONTESTS: WeeklyLeagueContest[] = [
   {
+    id: 'week-11-truist',
+    weekNumber: 11,
+    name: 'WEEK 11 TRUIST',
+    hostLabel: 'by dylangoody',
+    entryFeeDisplay: '$0',
+    lockAtIso: '2026-05-07T20:00:00.000Z',
+    status: 'live',
+    lockDisabled: true,
+    testMode: true,
+    salaryCap: 50000,
+    rosterSize: 6,
+    entryNumberLabel: '2/25',
+  },
+  {
     id: 'week-7-masters',
     weekNumber: 7,
     name: 'WEEK 7 MASTERS',
     hostLabel: 'by dylangoody',
     entryFeeDisplay: '$0',
     lockAtIso: '2026-04-09T12:00:00.000Z',
-    status: 'open',
-    lockDisabled: false,
+    status: 'final',
+    lockDisabled: true,
     testMode: true,
     salaryCap: 50000,
     rosterSize: 6,
@@ -107,6 +121,19 @@ export const WEEKLY_CONTESTS: WeeklyLeagueContest[] = [
 ];
 
 export const DEFAULT_PLAYER_POOL_BY_CONTEST: Record<string, PlayerPoolGolfer[]> = {
+  'week-11-truist': [
+    { golferId: 'w11-rory-mcilroy', name: 'Rory McIlroy', salary: 11700, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 85.3, top10s: 3, cutsMade: 8, cutsAttempts: 8, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-xander-schauffele', name: 'Xander Schauffele', salary: 10000, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 85.61, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-matt-fitzpatrick', name: 'Matt Fitzpatrick', salary: 9900, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 93.5, top10s: 4, cutsMade: 9, cutsAttempts: 9, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-maverick-mcnealy', name: 'Maverick McNealy', salary: 8500, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 75.51, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-kurt-kitayama', name: 'Kurt Kitayama', salary: 7800, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 75.88, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-akshay-bhatia', name: 'Akshay Bhatia', salary: 7700, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 76.1, top10s: 3, cutsMade: 7, cutsAttempts: 11, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-gary-woodland', name: 'Gary Woodland', salary: 7600, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 63.3, top10s: 2, cutsMade: 7, cutsAttempts: 11, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-nick-taylor', name: 'Nick Taylor', salary: 7100, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 69.1, top10s: 1, cutsMade: 12, cutsAttempts: 13, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-kristoffer-reitan', name: 'Kristoffer Reitan', salary: 6900, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 68.92, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-ryan-fox', name: 'Ryan Fox', salary: 6600, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 63.81, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+    { golferId: 'w11-jhonattan-vegas', name: 'Jhonattan Vegas', salary: 6000, position: 'G', headshotUrl: DEFAULT_HEADSHOT, fppg: 50.3, top10s: 0, cutsMade: 6, cutsAttempts: 10, teeTimeDisplay: 'Thu 4:00 PM', isActive: true },
+  ],
   'week-4-valspar': WEEK_4_VALSPAR_POOL,
   'week-3-players': WEEK_3_PLAYERS_POOL,
   'week-2-arnold-palmer': WEEK_2_ARNOLD_PALMER_POOL,
@@ -265,6 +292,9 @@ export function getLatestFinishedContestId() {
 }
 
 export function getDefaultPlayerPool(contestId: string) {
+  if (contestId === 'week-7-masters') {
+    return DEFAULT_PLAYER_POOL_BY_CONTEST['week-1-cognizant'] ?? [];
+  }
   return DEFAULT_PLAYER_POOL_BY_CONTEST[contestId] ?? [];
 }
 

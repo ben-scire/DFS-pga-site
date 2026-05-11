@@ -4,7 +4,7 @@ import { config as loadDotenv } from 'dotenv';
 import { applicationDefault, cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { normalizeNameForMatching } from '../src/lib/contest-standings-import';
-import { getDefaultPlayerPool, getWeeklyContestById } from '../src/lib/weekly-lineup-seed';
+import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById } from '../src/lib/weekly-lineup-seed';
 
 type DfsScoringMode = 'dfs-rules' | 'hybrid' | 'upstream';
 
@@ -40,7 +40,7 @@ type ExistingTestScore = {
   finalScoreLocked?: boolean;
 };
 
-const DEFAULT_INTERVAL_MS = 30_000;
+const DEFAULT_INTERVAL_MS = 3_600_000;
 const DEFAULT_SCORING_MODE: DfsScoringMode = 'dfs-rules';
 
 async function main() {
@@ -248,7 +248,7 @@ function loadEnvFiles() {
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  let contestId = (process.env.DATAGOLF_CONTEST_ID || '').trim() || 'week-4-valspar';
+  let contestId = (process.env.DATAGOLF_CONTEST_ID || '').trim() || getDefaultContestId();
   let once = false;
   let dryRun = false;
   let intervalMs = parsePositiveInt(process.env.DATAGOLF_POLL_INTERVAL_MS, DEFAULT_INTERVAL_MS);
@@ -303,14 +303,14 @@ function printHelp() {
   console.log(`Poll a Data Golf live endpoint and write Firestore test_scores docs.
 
 Usage:
-  tsx scripts/sync-datagolf-live-scores.ts [--contest-id week-4-valspar] [--once] [--dry-run] [--scoring-mode dfs-rules]
+  tsx scripts/sync-datagolf-live-scores.ts [--contest-id week-7-masters] [--once] [--dry-run] [--scoring-mode dfs-rules]
   tsx scripts/sync-datagolf-live-scores.ts --url "https://..." --once --dry-run
 
 Env (required unless --url is provided):
-  DATAGOLF_CONTEST_ID      Contest id to write into Firestore (default: week-4-valspar)
+  DATAGOLF_CONTEST_ID      Contest id to write into Firestore (default: current live contest)
   DATAGOLF_LIVE_URL        Full upstream URL. Supports {key} placeholder.
   DATAGOLF_API_KEY         Optional; substituted into DATAGOLF_LIVE_URL when {key} is present.
-  DATAGOLF_POLL_INTERVAL_MS  Poll interval (default 30000)
+  DATAGOLF_POLL_INTERVAL_MS  Poll interval (default 3600000)
   DATAGOLF_SCORING_MODE    dfs-rules (default: dfs-rules)
   DATAGOLF_TOURNAMENT_STATS_URL Optional endpoint for position/total/thru enrichment.
 

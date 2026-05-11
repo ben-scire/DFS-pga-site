@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { RefreshCw, Trophy } from 'lucide-react';
 import MainTabsHeader from '@/components/main-tabs-header';
 import { Badge } from '@/components/ui/badge';
@@ -15,11 +15,10 @@ import {
 } from '@/lib/firestore-live-scores';
 import {
   isFirestoreLineupStorageAvailable,
-  loadTestLineup,
-  subscribeToTestLineup,
+  loadContestLineups,
+  subscribeToContestLineups,
 } from '@/lib/firestore-lineups';
 import type { PlayerPoolGolfer } from '@/lib/lineup-builder-types';
-import { TEST_USERS } from '@/lib/test-users';
 import { getDefaultContestId, getDefaultPlayerPool, getWeeklyContestById } from '@/lib/weekly-lineup-seed';
 import { loadImportedPlayerPool } from '@/lib/weekly-lineup-storage';
 
@@ -103,7 +102,6 @@ function getRankTone(rank: number): string {
 }
 
 function WeekStandingsContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const contestId = searchParams.get('contestId')?.trim() || getDefaultContestId();
 
@@ -136,15 +134,12 @@ function WeekStandingsContent() {
     const unsubscribe = subscribeAuthSession((nextSession) => {
       setSession(nextSession);
       setCheckingSession(false);
-      if (!nextSession) {
-        router.replace('/');
-      }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const imported = loadImportedPlayerPool(contestId);
@@ -162,23 +157,17 @@ function WeekStandingsContent() {
 
     void (async () => {
       try {
-        const serverEntries = await Promise.all(
-          TEST_USERS.map(async (user) => ({
-            user,
-            entry: await loadTestLineup(contestId, user.id, { source: 'server' }),
-          }))
-        );
+        const serverEntries = await loadContestLineups(contestId, { source: 'server' });
         if (cancelled) return;
 
-        for (const row of serverEntries) {
-          const { user, entry } = row;
-          if (!entry || !entry.lineupGolferIds.length) {
-            entriesByUser.delete(user.id);
+        for (const entry of serverEntries) {
+          if (!entry.lineupGolferIds.length) {
+            entriesByUser.delete(entry.userKey);
             continue;
           }
-          entriesByUser.set(user.id, {
-            userKey: user.id,
-            userDisplayName: entry.userDisplayName || user.name,
+          entriesByUser.set(entry.userKey, {
+            userKey: entry.userKey,
+            userDisplayName: entry.userDisplayName || entry.userKey,
             lineupGolferIds: entry.lineupGolferIds,
           });
         }
@@ -195,35 +184,30 @@ function WeekStandingsContent() {
       };
     }
 
-    const unsubscribes = TEST_USERS.map((user) =>
-      subscribeToTestLineup(
-        contestId,
-        user.id,
-        (entry) => {
-          if (cancelled) return;
-          if (!entry || !entry.lineupGolferIds.length) {
-            entriesByUser.delete(user.id);
-          } else {
-            entriesByUser.set(user.id, {
-              userKey: user.id,
-              userDisplayName: entry.userDisplayName || user.name,
-              lineupGolferIds: entry.lineupGolferIds,
-            });
-          }
-          setLineups(Array.from(entriesByUser.values()));
-          setLineupStatus('live');
-        },
-        () => {
-          if (!cancelled) setLineupStatus('error');
+    const unsubscribe = subscribeToContestLineups(
+      contestId,
+      (entries) => {
+        if (cancelled) return;
+        entriesByUser.clear();
+        for (const entry of entries) {
+          if (!entry.lineupGolferIds.length) continue;
+          entriesByUser.set(entry.userKey, {
+            userKey: entry.userKey,
+            userDisplayName: entry.userDisplayName || entry.userKey,
+            lineupGolferIds: entry.lineupGolferIds,
+          });
         }
-      )
+        setLineups(Array.from(entriesByUser.values()));
+        setLineupStatus('live');
+      },
+      () => {
+        if (!cancelled) setLineupStatus('error');
+      }
     );
 
     return () => {
       cancelled = true;
-      for (const unsubscribe of unsubscribes) {
-        unsubscribe();
-      }
+      unsubscribe();
     };
   }, [contestId, isLiveContest]);
 
@@ -345,10 +329,6 @@ function WeekStandingsContent() {
     return <div className="min-h-screen bg-[#081325]" />;
   }
 
-  if (!session) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#1b3b67_0%,_#0d1a30_42%,_#090f1a_100%)] px-4 py-6 text-zinc-100">
       <div className="mx-auto max-w-5xl space-y-4">
@@ -442,7 +422,11 @@ function WeekStandingsContent() {
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-center text-sm text-zinc-500">
-                No submitted lineups found yet for this contest.
+                {lineupStatus === 'error'
+                  ? 'Could not read lineups from Firestore. Check deployed Firestore rules for this contest.'
+                  : lineupStatus === 'no-feed'
+                    ? 'Firebase is not configured in this build, so live lineups cannot load.'
+                    : 'No submitted lineups found yet for this contest.'}
               </div>
             )}
 

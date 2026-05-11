@@ -1,0 +1,23 @@
+{
+  "eventId": 11,
+  "eventName": "Truist Championship",
+  "activePlayers": 17,
+  "entries": [
+    { "entryId": "yimmerdoe", "entryName": "yimmerdoe", "weeklyFantasyPoints": 487.0 },
+    { "entryId": "capc", "entryName": "capc", "weeklyFantasyPoints": 478.5 },
+    { "entryId": "rohansharma99", "entryName": "rohansharma99", "weeklyFantasyPoints": 469.0 },
+    { "entryId": "wyaggy3", "entryName": "wyaggy3", "weeklyFantasyPoints": 460.5 },
+    { "entryId": "bscire", "entryName": "bscire", "weeklyFantasyPoints": 440.0 },
+    { "entryId": "cm30", "entryName": "cm30", "weeklyFantasyPoints": 436.5 },
+    { "entryId": "mtibaudo", "entryName": "mtibaudo", "weeklyFantasyPoints": 429.5 },
+    { "entryId": "samthemaam5", "entryName": "samthemaam5", "weeklyFantasyPoints": 422.5 },
+    { "entryId": "finsmaniac", "entryName": "finsmaniac", "weeklyFantasyPoints": 422.5 },
+    { "entryId": "eions", "entryName": "eions", "weeklyFantasyPoints": 420.0 },
+    { "entryId": "jpetruney", "entryName": "jpetruney", "weeklyFantasyPoints": 411.5 },
+    { "entryId": "sam.scire", "entryName": "sam.scire", "weeklyFantasyPoints": 407.5 },
+    { "entryId": "uncle-neal", "entryName": "uncle neal", "weeklyFantasyPoints": 407.5 },
+    { "entryId": "tomlinsonj15", "entryName": "tomlinsonj15", "weeklyFantasyPoints": 398.5 },
+    { "entryId": "amac", "entryName": "amac", "weeklyFantasyPoints": 398.0 },
+    { "entryId": "abboduece22", "entryName": "abboduece22", "weeklyFantasyPoints": 381.0 }
+  ]
+}

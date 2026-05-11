@@ -24,11 +24,11 @@ SCHEDULER_REGION="${SCHEDULER_REGION:-$REGION}"
 TIME_ZONE="${TIME_ZONE:-America/New_York}"
 TOUR="${TOUR:-pga}"
 SCORING_MODE="${SCORING_MODE:-dfs-rules}"
-DATAGOLF_CONTEST_ID="${DATAGOLF_CONTEST_ID:-week-4-valspar}"
+DATAGOLF_CONTEST_ID="${DATAGOLF_CONTEST_ID:-week-11-truist}"
 AR_REPO="${AR_REPO:-sync-jobs}"
 IMAGE_NAME="${IMAGE_NAME:-datagolf-live-sync}"
 JOB_NAME="${JOB_NAME:-datagolf-live-sync}"
-SCHEDULER_JOB_NAME="${SCHEDULER_JOB_NAME:-datagolf-live-sync-every-minute}"
+SCHEDULER_JOB_NAME="${SCHEDULER_JOB_NAME:-datagolf-live-sync-hourly}"
 DATAGOLF_SECRET_NAME="${DATAGOLF_SECRET_NAME:-datagolf-api-key}"
 RUNTIME_SA_NAME="${RUNTIME_SA_NAME:-datagolf-sync-job}"
 SCHEDULER_SA_NAME="${SCHEDULER_SA_NAME:-datagolf-sync-scheduler}"
@@ -174,7 +174,7 @@ echo "Creating/updating Cloud Scheduler job..."
 if gcloud scheduler jobs describe "${SCHEDULER_JOB_NAME}" --location "${SCHEDULER_REGION}" >/dev/null 2>&1; then
   gcloud scheduler jobs update http "${SCHEDULER_JOB_NAME}" \
     --location "${SCHEDULER_REGION}" \
-    --schedule "*/1 * * * *" \
+    --schedule "0 * * * *" \
     --time-zone "${TIME_ZONE}" \
     --uri "${JOB_RUN_URI}" \
     --http-method POST \
@@ -185,7 +185,7 @@ if gcloud scheduler jobs describe "${SCHEDULER_JOB_NAME}" --location "${SCHEDULE
 else
   gcloud scheduler jobs create http "${SCHEDULER_JOB_NAME}" \
     --location "${SCHEDULER_REGION}" \
-    --schedule "*/1 * * * *" \
+    --schedule "0 * * * *" \
     --time-zone "${TIME_ZONE}" \
     --uri "${JOB_RUN_URI}" \
     --http-method POST \

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { subscribeAuthSession, type AuthSession } from '@/lib/firebase-auth';
 import {
@@ -104,16 +104,19 @@ function getFallbackContest(contestId: string): WeeklyLeagueContest {
 }
 
 function LiveLineupContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const contestId = searchParams.get('contestId') ?? getDefaultContestId();
 
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
 
+  const requestedUserId = searchParams.get('userId')?.trim();
   const viewerUserId = session?.userSlug ?? 'guest';
-  const lineupUserIdRaw = searchParams.get('userId')?.trim() || viewerUserId;
-  const lineupUserId = isTestUserId(lineupUserIdRaw) ? lineupUserIdRaw : viewerUserId;
+  const lineupUserId = isTestUserId(requestedUserId)
+    ? requestedUserId
+    : isTestUserId(viewerUserId)
+      ? viewerUserId
+      : '';
 
   const contest = getWeeklyContestById(contestId) ?? getFallbackContest(contestId);
   const isLiveContest = contest.status === 'live';
@@ -128,24 +131,26 @@ function LiveLineupContent() {
     const unsubscribe = subscribeAuthSession((nextSession) => {
       setSession(nextSession);
       setCheckingSession(false);
-      if (!nextSession) {
-        router.replace('/');
-      }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const imported = loadImportedPlayerPool(contestId);
     setPlayerPool(imported && imported.length ? imported : getDefaultPlayerPool(contestId));
 
+    if (!isValidUser) {
+      setEntry(null);
+      return;
+    }
+
     const local = loadPersistedLineup(contestId, lineupUserId);
     setEntry(local);
 
-    if (!isValidUser || !isFirestoreLineupStorageAvailable()) return;
+    if (!isFirestoreLineupStorageAvailable()) return;
 
     let cancelled = false;
     void (async () => {
@@ -242,10 +247,6 @@ function LiveLineupContent() {
     return <div className="min-h-screen bg-[#080c13] text-zinc-100" />;
   }
 
-  if (!session) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-[#080c13] text-zinc-100">
       <div className="mx-auto max-w-3xl">
@@ -273,7 +274,11 @@ function LiveLineupContent() {
           </div>
         </section>
 
-        {lineupGolfers.length ? (
+        {!isValidUser ? (
+          <div className="px-4 py-8 text-center text-sm text-zinc-400">
+            Choose an entry from Week Standings to view live lineup details.
+          </div>
+        ) : lineupGolfers.length ? (
           <div className="divide-y divide-cyan-200/10">
             {lineupLiveStats.rows.map(({ golfer, score }) => (
               <article key={golfer.golferId} className="bg-[#101722] px-3 py-1.5">

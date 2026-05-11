@@ -12,7 +12,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "import:standings": "tsx scripts/import-contest-standings.ts",
-    "sync:datagolf:scores": "tsx scripts/sync-datagolf-live-scores.ts"
+    "sync:datagolf:scores": "tsx scripts/sync-datagolf-live-scores.ts",
+    "sync:datagolf:scores:once": "tsx scripts/sync-datagolf-live-scores.ts --once"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",
