@@ -1,0 +1,94 @@
+{
+  "eventId": 12,
+  "eventName": "PGA Championship",
+  "activePlayers": 17,
+  "entries": [
+    {
+      "entryId": "sam.scire",
+      "entryName": "sam.scire",
+      "weeklyFantasyPoints": 381.0
+    },
+    {
+      "entryId": "johncastronovo",
+      "entryName": "johncastronovo",
+      "weeklyFantasyPoints": 369.0
+    },
+    {
+      "entryId": "capc",
+      "entryName": "capc",
+      "weeklyFantasyPoints": 366.0
+    },
+    {
+      "entryId": "finsmaniac",
+      "entryName": "finsmaniac",
+      "weeklyFantasyPoints": 364.0
+    },
+    {
+      "entryId": "tomlinsonj15",
+      "entryName": "tomlinsonj15",
+      "weeklyFantasyPoints": 352.5
+    },
+    {
+      "entryId": "wyaggy3",
+      "entryName": "wyaggy3",
+      "weeklyFantasyPoints": 337.0
+    },
+    {
+      "entryId": "eions",
+      "entryName": "eions",
+      "weeklyFantasyPoints": 332.5
+    },
+    {
+      "entryId": "rohansharma99",
+      "entryName": "rohansharma99",
+      "weeklyFantasyPoints": 328.5
+    },
+    {
+      "entryId": "samthemaam5",
+      "entryName": "samthemaam5",
+      "weeklyFantasyPoints": 326.5
+    },
+    {
+      "entryId": "mtibaudo",
+      "entryName": "mtibaudo",
+      "weeklyFantasyPoints": 323.5
+    },
+    {
+      "entryId": "uncle-neal",
+      "entryName": "uncle neal",
+      "weeklyFantasyPoints": 315.0
+    },
+    {
+      "entryId": "bscire",
+      "entryName": "bscire",
+      "weeklyFantasyPoints": 313.0
+    },
+    {
+      "entryId": "cm30",
+      "entryName": "cm30",
+      "weeklyFantasyPoints": 309.0
+    },
+    {
+      "entryId": "jpetruney",
+      "entryName": "jpetruney",
+      "weeklyFantasyPoints": 295.0
+    },
+    {
+      "entryId": "amac",
+      "entryName": "amac",
+      "weeklyFantasyPoints": 289.5
+    },
+    {
+      "entryId": "yimmerdoe",
+      "entryName": "yimmerdoe",
+      "weeklyFantasyPoints": 234.5
+    },
+    {
+      "entryId": "abboduece22",
+      "entryName": "abboduece22",
+      "weeklyFantasyPoints": 0.0,
+      "noRank": true,
+      "feeOverride": 0
+    }
+  ]
+}
