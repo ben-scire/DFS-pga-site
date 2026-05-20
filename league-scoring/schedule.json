@@ -13,8 +13,6 @@
   { "id": 11, "name": "Truist Championship", "tier": "Signature", "quarter": 2, "isQuarterFinale": false },
   { "id": 12, "name": "PGA Championship", "tier": "Major", "quarter": 2, "isQuarterFinale": true },
   
-  { "id": 13, "name": "CJ Cup Byron Nelson", "tier": "Standard", "quarter": 3, "isQuarterFinale": false },
-  { "id": 14, "name": "Charles Schwab Challenge", "tier": "Standard", "quarter": 3, "isQuarterFinale": false },
   { "id": 15, "name": "The Memorial Tournament", "tier": "Signature", "quarter": 3, "isQuarterFinale": false },
   { "id": 16, "name": "RBC Canadian Open", "tier": "Standard", "quarter": 3, "isQuarterFinale": false },
   { "id": 17, "name": "U.S. Open", "tier": "Major", "quarter": 3, "isQuarterFinale": false },
