@@ -13,6 +13,7 @@ import weekEightData from '../../league-scoring/weekly-scores/Q2/week-8-heritage
 import weekNineData from '../../league-scoring/weekly-scores/Q2/week-9-zurich.json';
 import weekTenData from '../../league-scoring/weekly-scores/Q2/week-10-miami-championship.json';
 import weekElevenData from '../../league-scoring/weekly-scores/Q2/week-11-truist-championship.json';
+import weekTwelveData from '../../league-scoring/weekly-scores/Q2/week-12-pga-championship.json';
 import { TEST_USER_DIRECTORY } from '@/lib/test-users';
 
 export type StandingsEntry = {
@@ -45,6 +46,7 @@ export type WeeklyScoreEntry = {
 export type WeeklyScoreFile = {
   eventId: number;
   eventName: string;
+  activePlayers?: number;
   entries: WeeklyScoreEntry[];
 };
 
@@ -84,6 +86,15 @@ export type LatestWeeklyFinalRow = {
 
 export type QuarterScheduleDisplayRow = ScheduleEvent & {
   winner: string;
+};
+
+export type QuarterFinalPayoutRow = {
+  rank: number;
+  entryId: string;
+  displayName: string;
+  championshipPoints: number;
+  payout: number;
+  activePlayers: number;
 };
 
 const EVENT_SHORT_LABELS: Record<number, string> = {
@@ -141,6 +152,7 @@ const WEEKLY_PAYOUTS = {
   Signature: [105, 50, 35, 20, 10],
   Major: [115, 55, 25, 15, 10],
 } as const;
+const QUARTERLY_PAYOUTS = [550, 275, 135, 85, 55] as const;
 
 export const SEASON_SCHEDULE = scheduleData as ScheduleEvent[];
 export const COMPLETED_WEEKLY_SCORES = [
@@ -155,11 +167,12 @@ export const COMPLETED_WEEKLY_SCORES = [
   weekNineData,
   weekTenData,
   weekElevenData,
+  weekTwelveData,
 ]
   .map((week) => week as WeeklyScoreFile)
   .sort((left, right) => left.eventId - right.eventId);
 
-const Q2_COMPLETED_WEEKLY_SCORES = [weekEightData, weekNineData, weekTenData, weekElevenData]
+const Q2_COMPLETED_WEEKLY_SCORES = [weekEightData, weekNineData, weekTenData, weekElevenData, weekTwelveData]
   .map((week) => week as WeeklyScoreFile)
   .sort(
   (left, right) => left.eventId - right.eventId
@@ -294,6 +307,24 @@ export function getSeasonStandingsRows(): SeasonStandingsDisplayRow[] {
 
 export function getQ2StandingsRows(): SeasonStandingsDisplayRow[] {
   return getStandingsDisplayRows(q2StandingsData as StandingsEntry[], getQ2EventColumns());
+}
+
+export function getQ2FinalPayoutRows(): QuarterFinalPayoutRow[] {
+  const activePlayers = Q2_COMPLETED_WEEKLY_SCORES.reduce((max, week) => {
+    if (typeof week.activePlayers === 'number') return Math.max(max, week.activePlayers);
+    return Math.max(max, rankWeeklyEntries(week.entries).length);
+  }, 0);
+  const scale = activePlayers / BASE_POOL_SIZE;
+  const payouts = QUARTERLY_PAYOUTS.map((value) => Math.floor(value * scale));
+
+  return getQ2StandingsRows().slice(0, payouts.length).map((entry, index) => ({
+    rank: entry.rank ?? index + 1,
+    entryId: entry.entryId,
+    displayName: entry.displayName,
+    championshipPoints: entry.championshipPoints ?? 0,
+    payout: payouts[index] ?? 0,
+    activePlayers,
+  }));
 }
 
 export function getQ1StandingsRows(): SeasonStandingsDisplayRow[] {

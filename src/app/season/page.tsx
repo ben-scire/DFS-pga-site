@@ -12,12 +12,14 @@ import {
   formatScoringCell,
   getLatestWeeklyFinalStandings,
   getQ2EventColumns,
+  getQ2FinalPayoutRows,
   getQ2SixteenPlayerScoringMatrix,
   getQ2StandingsRows,
   getQuarterScheduleRows,
   getSeasonEventColumns,
   getSeasonStandingsRows,
   type EventFinishColumn,
+  type QuarterFinalPayoutRow,
   type QuarterScheduleDisplayRow,
   type ScheduleEvent,
   type SeasonStandingsDisplayRow,
@@ -76,6 +78,14 @@ function formatNetDollars(value: number | null): string {
   if (value > 0) return `+$${absValue}`;
   if (value < 0) return `-$${absValue}`;
   return '$0';
+}
+
+function formatPayoutDollars(value: number): string {
+  const hasFraction = Math.abs(value % 1) > Number.EPSILON;
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: hasFraction ? 1 : 0,
+    maximumFractionDigits: 1,
+  })}`;
 }
 
 function getScoringTierPanelClass(tier: 'Major' | 'Signature' | 'Standard') {
@@ -223,6 +233,49 @@ function StandingsTableCard({
   );
 }
 
+function QuarterFinalPayoutsCard({ payouts }: { payouts: QuarterFinalPayoutRow[] }) {
+  const activePlayers = payouts[0]?.activePlayers ?? 0;
+
+  return (
+    <Card className="rounded-3xl border border-emerald-300/20 bg-[#0b1322]/90 text-zinc-100">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-emerald-300" />
+          <CardTitle>Q2 final quarter payouts</CardTitle>
+        </div>
+        <CardDescription className="text-zinc-400">
+          Gross quarter-prize payouts for the final Q2 standings, based on the {activePlayers || '--'}-player active
+          quarter pool. This is separate from Net $.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-2">
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[420px] text-sm">
+            <thead className="bg-white/[0.04] text-zinc-300">
+              <tr>
+                <th className="px-3 py-2 text-left">Finish</th>
+                <th className="px-3 py-2 text-left">User</th>
+                <th className="px-3 py-2 text-right">Q2 points</th>
+                <th className="px-3 py-2 text-right">Payout</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payouts.map((row) => (
+                <tr key={row.entryId} className="border-t border-white/5">
+                  <td className="px-3 py-2.5 font-semibold">{getRankLabel(row.rank)}</td>
+                  <td className="px-3 py-2.5">{row.displayName}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold text-cyan-300">{row.championshipPoints}</td>
+                  <td className="px-3 py-2.5 text-right font-bold text-emerald-300">{formatPayoutDollars(row.payout)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SeasonPage() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -242,6 +295,7 @@ export default function SeasonPage() {
   const overallColumns = useMemo(() => getSeasonEventColumns(), []);
   const q2Standings = useMemo(() => getQ2StandingsRows(), []);
   const q2Columns = useMemo(() => getQ2EventColumns(), []);
+  const q2FinalPayouts = useMemo(() => getQ2FinalPayoutRows(), []);
   const q2ScoringMatrix = useMemo(() => getQ2SixteenPlayerScoringMatrix(), []);
   const q2Schedule = useMemo(() => getQuarterScheduleRows(2), []);
   const latestWeeklyFinal = useMemo(() => getLatestWeeklyFinalStandings(), []);
@@ -311,13 +365,16 @@ export default function SeasonPage() {
           </TabsContent>
 
           <TabsContent value="q2" className="mt-3">
-            <StandingsTableCard
-              title="Quarter 2 standings"
-              description="Computed Q2 snapshot from league-scoring/q2-standings.json with Q2 weekly finish columns only."
-              icon={<Trophy className="h-5 w-5 text-amber-300" />}
-              standings={q2Standings}
-              eventColumns={q2Columns}
-            />
+            <div className="space-y-3">
+              <QuarterFinalPayoutsCard payouts={q2FinalPayouts} />
+              <StandingsTableCard
+                title="Quarter 2 standings"
+                description="Computed Q2 snapshot from league-scoring/q2-standings.json with Q2 weekly finish columns only. Net $ includes weekly payouts, quarter payouts, and entry fees."
+                icon={<Trophy className="h-5 w-5 text-amber-300" />}
+                standings={q2Standings}
+                eventColumns={q2Columns}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="q2-scoring" className="mt-3">
